@@ -96,7 +96,8 @@ if not ADMIN_EMAIL or not ADMIN_PASSWORD or not JWT_SECRET:
 
 
 # Database setup
-DB_FILE = 'arpg_database.db'
+import os
+DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arpg_database.db')
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -1909,38 +1910,42 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)  # d:\PG\
 
-@app.route('/forgot-password.html')
+@app.route('/student/forgot-password.html')
 def forgot_password_page():
-    return send_from_directory(PARENT_DIR, 'forgot-password.html')
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'forgot-password.html')
 
 @app.route('/auth.html')
 def auth_page():
     return send_from_directory(PARENT_DIR, 'auth.html')
 
-@app.route('/admin.html')
+@app.route('/admin/admin.html')
 def admin_page():
-    return send_from_directory(PARENT_DIR, 'admin.html')
+    return send_from_directory(os.path.join(PARENT_DIR, 'admin'), 'admin.html')
 
-@app.route('/dashboard.html')
+@app.route('/student/dashboard.html')
 def dashboard_page():
-    return send_from_directory(PARENT_DIR, 'dashboard.html')
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'dashboard.html')
 
-@app.route('/payment.html')
+@app.route('/student/payment.html')
 def payment_page():
-    return send_from_directory(PARENT_DIR, 'payment.html')
-
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'payment.html')
 
 @app.route('/index.html')
 @app.route('/')
 def index_page():
     return send_from_directory(PARENT_DIR, 'index.html')
 
-@app.route('/admin-forgot-password.html')
+@app.route('/admin/admin-forgot-password.html')
 def admin_forgot_password_page():
-    return send_from_directory(PARENT_DIR, 'admin-forgot-password.html')
-@app.route('/current-bill.html')
+    return send_from_directory(os.path.join(PARENT_DIR, 'admin'), 'admin-forgot-password.html')
+
+@app.route('/student/current-bill.html')
 def current_bill_page():
-    return send_from_directory(PARENT_DIR, 'current-bill.html')
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'current-bill.html')
+
+@app.route('/admin/announcement.html')
+def announcement_page():
+    return send_from_directory(os.path.join(PARENT_DIR, 'admin'), 'announcement.html')
 # @app.route('/api/current-bills/pending', methods=['GET'])
 # def get_pending_current_bills():
 #     """Get all pending current bill verifications for admin"""
