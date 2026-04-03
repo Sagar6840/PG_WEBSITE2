@@ -341,7 +341,7 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
     if (!adminToken || !adminEmail) {
         console.error('❌ No admin credentials found');
         alert('⚠️ Admin access only! Please login as admin first.');
-        window.location.href = 'auth.html#admin';
+        window.location.href = '../auth.html#admin';
         return;
     }
     
@@ -358,7 +358,7 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
             alert('⚠️ Your session has expired. Please login again.');
             localStorage.removeItem('adminToken');
             localStorage.removeItem('adminEmail');
-            window.location.href = 'auth.html#admin';
+            window.location.href = '../auth.html#admin';
             return;
         }
         

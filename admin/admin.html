@@ -853,7 +853,7 @@
     <!-- Navigation -->
     <div class="navbar">
         <div class="logo">
-            <img src="image.png" alt="AR PG Logo">
+            <img src="../assets/image.png" alt="AR PG Logo">
             <span>AR PG - Admin Panel</span>
         </div>
 
@@ -1395,7 +1395,7 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
 
             if (!adminToken || !adminEmail) {
                 alert('⚠️ Please login first!');
-                window.location.href = 'auth.html';
+                window.location.href = '../auth.html';
                 return false;
             }
 
@@ -1409,7 +1409,7 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
                     localStorage.removeItem('adminToken');
                     localStorage.removeItem('adminEmail');
                     alert('⚠️ Your session has expired. Please login again.');
-                    window.location.href = 'auth.html';
+                    window.location.href = '../auth.html';
                     return false;
                 }
 
@@ -1419,7 +1419,7 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
                 localStorage.removeItem('adminToken');
                 localStorage.removeItem('adminEmail');
                 alert('⚠️ Invalid session. Please login again.');
-                window.location.href = 'auth.html';
+                window.location.href = '../auth.html';
                 return false;
             }
 
@@ -2090,7 +2090,7 @@ tbody.innerHTML = filtered.map(s => `
                 localStorage.removeItem('adminToken');
                 localStorage.removeItem('adminEmail');
                 alert('Logged out successfully!');
-                window.location.href = 'auth.html';
+                window.location.href = '../auth.html';
             }
         }
 

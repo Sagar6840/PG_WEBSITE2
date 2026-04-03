@@ -2,7 +2,7 @@
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import sqlite3
+import psycopg2
 import json
 import random
 from datetime import datetime, timedelta
@@ -96,8 +96,13 @@ if not ADMIN_EMAIL or not ADMIN_PASSWORD or not JWT_SECRET:
 
 
 # Database setup
-import os
-DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arpg_database.db')
+def get_db_connection():
+    return psycopg2.connect(
+        host="localhost",
+        database="pg_system",
+        user="postgres",
+        password="Sagar@6842"
+    )
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -366,112 +371,111 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
 #         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
 #         return response, 200
 
-def init_db():
-    """Initialize database with tables"""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    # Create students table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fullName TEXT NOT NULL,
-            email TEXT NOT NULL,
-            phone TEXT UNIQUE NOT NULL,
-            college TEXT NOT NULL,
-            course TEXT NOT NULL,
-            year TEXT NOT NULL,
-            roomType TEXT NOT NULL,
-            password TEXT NOT NULL,
-            registrationDate TEXT NOT NULL,
-            status TEXT DEFAULT 'Active',
-            roomNumber INTEGER,
-            monthlyRent INTEGER DEFAULT 8000,
-            paymentStatus TEXT DEFAULT 'pending'
-        )
-    ''')
-    
-    # Create payments table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            studentPhone TEXT NOT NULL,
-            amount INTEGER NOT NULL,
-            dueDate TEXT NOT NULL,
-            paymentDate TEXT,
-            status TEXT DEFAULT 'pending',
-            FOREIGN KEY (studentPhone) REFERENCES students(phone)
-        )
-    ''')
-    
-    # Create messages table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            studentPhone TEXT NOT NULL,
-            messageType TEXT NOT NULL,
-            message TEXT NOT NULL,
-            sentDate TEXT NOT NULL,
-            FOREIGN KEY (studentPhone) REFERENCES students(phone)
-        )
-    ''')
-    
-    # Create announcements table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS announcements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            message TEXT NOT NULL,
-            type TEXT DEFAULT 'notice',
-            priority TEXT DEFAULT 'low',
-            date TEXT NOT NULL,
-            createdBy TEXT DEFAULT 'Admin',
-            createdAt TEXT NOT NULL
-        )
-    ''')
-       # Create table for storing reset codes
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS password_resets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT,
-            code TEXT,
-            expires_at TEXT
-        )
-    ''')
+# def init_db():
+#     """Initialize database with tables"""
+#     conn = get_db_connection()
+#     cursor = conn.cursor()
+#
+#     # Create students table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS students (
+#             id SERIAL PRIMARY KEY,
+#             fullName TEXT NOT NULL,
+#             email TEXT NOT NULL,
+#             phone TEXT UNIQUE NOT NULL,
+#             college TEXT NOT NULL,
+#             course TEXT NOT NULL,
+#             year TEXT NOT NULL,
+#             roomType TEXT NOT NULL,
+#             password TEXT NOT NULL,
+#             registrationDate TEXT NOT NULL,
+#             status TEXT DEFAULT 'Active',
+#             roomNumber INTEGER,
+#             monthlyRent INTEGER DEFAULT 8000,
+#             paymentStatus TEXT DEFAULT 'pending'
+#         )
+#     ''')
+#
+#     # Create payments table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS payments (
+#             id SERIAL PRIMARY KEY,
+#             studentPhone TEXT NOT NULL,
+#             amount INTEGER NOT NULL,
+#             dueDate TEXT NOT NULL,
+#             paymentDate TEXT,
+#             status TEXT DEFAULT 'pending',
+#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
+#         )
+#     ''')
+#
+#     # Create messages table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS messages (
+#             id SERIAL PRIMARY KEY,
+#             studentPhone TEXT NOT NULL,
+#             messageType TEXT NOT NULL,
+#             message TEXT NOT NULL,
+#             sentDate TEXT NOT NULL,
+#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
+#         )
+#     ''')
+#
+#     # Create announcements table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS announcements (
+#             id SERIAL PRIMARY KEY,
+#             title TEXT NOT NULL,
+#             message TEXT NOT NULL,
+#             type TEXT DEFAULT 'notice',
+#             priority TEXT DEFAULT 'low',
+#             date TEXT NOT NULL,
+#             createdBy TEXT DEFAULT 'Admin',
+#             createdAt TEXT NOT NULL
+#         )
+#     ''')
+#
+#     # Create table for storing reset codes
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS password_resets (
+#             id SERIAL PRIMARY KEY,
+#             email TEXT,
+#             code TEXT,
+#             expires_at TEXT
+#         )
+#     ''')
+#
+#     # Create inquiries table
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS inquiries (
+#             id SERIAL PRIMARY KEY,
+#             name TEXT NOT NULL,
+#             email TEXT NOT NULL,
+#             phone TEXT NOT NULL,
+#             room TEXT,
+#             message TEXT,
+#             date TEXT NOT NULL
+#         )
+#     ''')
+#
+#     cursor.execute('''
+#         CREATE TABLE IF NOT EXISTS current_bills (
+#             id SERIAL PRIMARY KEY,
+#             studentPhone TEXT NOT NULL,
+#             amount INTEGER DEFAULT 200,
+#             month TEXT NOT NULL,
+#             paymentDate TEXT NOT NULL,
+#             status TEXT DEFAULT 'paid',
+#             paymentProof TEXT,
+#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
+#         )
+#     ''')
+#
+#     conn.commit()
+#     conn.close()
+#     print("✅ Database initialized!")
 
-
-        # Create inquiries table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS inquiries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            room TEXT,
-            message TEXT,
-            date TEXT NOT NULL
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS current_bills (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            studentPhone TEXT NOT NULL,
-            amount INTEGER DEFAULT 200,
-            month TEXT NOT NULL,
-            paymentDate TEXT NOT NULL,
-            status TEXT DEFAULT 'paid',
-           paymentProof TEXT,  --
-            FOREIGN KEY (studentPhone) REFERENCES students(phone)
-        )
-    ''')
-
-    
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized!")
-
-# Initialize database on startup
-init_db()
+# init_db() — removed: tables are managed directly in PostgreSQL
 
 # ==================== AUTHENTICATION ROUTES ====================
 
@@ -481,11 +485,11 @@ def signup():
     try:
         data = request.json
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Check if phone already exists
-        cursor.execute('SELECT * FROM students WHERE phone = ?', (data['phone'],))
+        cursor.execute('SELECT * FROM students WHERE phone = %s', (data['phone'],))
         if cursor.fetchone():
             return jsonify({'success': False, 'message': 'Phone number already registered!'}), 400
         
@@ -504,7 +508,7 @@ def signup():
         # ✅ UPDATED: Insert with monthlyRent
         cursor.execute('''
             INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, monthlyRent)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             data['fullName'],
             data['email'],
@@ -538,13 +542,13 @@ def login():
         if not identifier or not password:
             return jsonify({'success': False, 'message': 'Email/Phone and password are required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Check using phone OR email
         cursor.execute('''
             SELECT * FROM students
-            WHERE (phone = ? OR email = ?) AND password = ?
+            WHERE (phone = %s OR email = %s) AND password = %s
         ''', (identifier, identifier, hash_password(password)))
 
         student = cursor.fetchone()
@@ -579,10 +583,10 @@ def login():
 def get_student(phone):
     """Get student details"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT * FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         conn.close()
         
@@ -613,12 +617,12 @@ def get_student(phone):
 def get_student_payments(phone):
     """Get student payment history"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             SELECT id, amount, dueDate, paymentDate, status 
-            FROM payments WHERE studentPhone = ?
+            FROM payments WHERE studentPhone = %s
             ORDER BY dueDate DESC
         ''', (phone,))
         
@@ -646,12 +650,12 @@ def get_student_payments(phone):
 def get_student_messages(phone):
     """Get messages for student"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             SELECT id, messageType, message, sentDate 
-            FROM messages WHERE studentPhone = ?
+            FROM messages WHERE studentPhone = %s
             ORDER BY sentDate DESC
         ''', (phone,))
         
@@ -687,7 +691,7 @@ def get_student_messages(phone):
 def get_announcements():
     """Get all announcements for students"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -725,12 +729,13 @@ def create_announcement():
     try:
         data = request.json
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             INSERT INTO announcements (title, message, type, priority, date, createdBy, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         ''', (
             data.get('title', 'Announcement'),
             data.get('message'),
@@ -740,12 +745,12 @@ def create_announcement():
             data.get('createdBy', 'Admin'),
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ))
-        
-        announcement_id = cursor.lastrowid
+
+        announcement_id = cursor.fetchone()[0]
         conn.commit()
         
         # Get the created announcement
-        cursor.execute('SELECT * FROM announcements WHERE id = ?', (announcement_id,))
+        cursor.execute('SELECT * FROM announcements WHERE id = %s', (announcement_id,))
         announcement = cursor.fetchone()
         
         sent_count = 0
@@ -759,7 +764,7 @@ def create_announcement():
                 cursor.execute('SELECT fullName, email, phone FROM students')
             else:
                 if phones:
-                    placeholders = ','.join('?' * len(phones))
+                    placeholders = ','.join(['%s'] * len(phones))
                     cursor.execute(f'SELECT fullName, email, phone FROM students WHERE phone IN ({placeholders})', phones)
                 else:
                     cursor.execute('SELECT fullName, email, phone FROM students LIMIT 0')
@@ -809,10 +814,10 @@ def create_announcement():
 def delete_announcement(announcement_id):
     """Delete announcement (Admin only)"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('DELETE FROM announcements WHERE id = ?', (announcement_id,))
+        cursor.execute('DELETE FROM announcements WHERE id = %s', (announcement_id,))
         conn.commit()
         conn.close()
         
@@ -830,13 +835,13 @@ def update_announcement(announcement_id):
     try:
         data = request.json
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE announcements 
-            SET title = ?, message = ?, type = ?, priority = ?
-            WHERE id = ?
+            SET title = %s, message = %s, type = %s, priority = %s
+            WHERE id = %s
         ''', (
             data.get('title'),
             data.get('message'),
@@ -865,7 +870,7 @@ def update_announcement(announcement_id):
 def get_all_students():
     """Get all students (for admin)"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # REPLACE WITH:
@@ -899,12 +904,12 @@ def admin_add_student():
     try:
         data = request.json
         random_password = generate_random_password()
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, roomNumber, monthlyRent)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             data['fullName'],
             data['email'],
@@ -975,7 +980,7 @@ def admin_add_student():
 def get_all_payments():
     """Get all payments (for admin)"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -1046,11 +1051,11 @@ def mark_payment_paid():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone number required'}), 400
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber, monthlyRent FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber, monthlyRent FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -1064,15 +1069,15 @@ def mark_payment_paid():
         # ✅ FIXED: Remove LIMIT from UPDATE query
         cursor.execute('''
             UPDATE payments 
-            SET status = 'paid', paymentDate = ?
-            WHERE studentPhone = ? AND status = 'pending'
+            SET status = 'paid', paymentDate = %s
+            WHERE studentPhone = %s AND status = 'pending'
         ''', (datetime.now().strftime('%d-%b-%Y'), phone))
         
         # Also update student payment status
         cursor.execute('''
             UPDATE students 
             SET paymentStatus = 'paid'
-            WHERE phone = ?
+            WHERE phone = %s
         ''', (phone,))
         
         conn.commit()
@@ -1100,11 +1105,11 @@ def create_payment_order():
         phone = data.get('phone')
         amount = data.get('amount', 8000)  # in rupees
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, email FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, email FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         conn.close()
         
@@ -1137,11 +1142,11 @@ def verify_payment():
         amount = data.get('amount', 8000)
         payment_method = data.get('paymentMethod', 'Online')
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -1154,15 +1159,20 @@ def verify_payment():
         # Mark payment as paid
         cursor.execute('''
             UPDATE students SET paymentStatus = 'paid'
-            WHERE phone = ?
+            WHERE phone = %s
         ''', (phone,))
         
         # Create payment record
         cursor.execute('''
-            INSERT INTO payments (studentPhone, amount, dueDate, paymentDate, status)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (phone, amount, datetime.now().strftime('%d-%b-%Y'), datetime.now().strftime('%d-%b-%Y'), 'paid'))
-        
+    INSERT INTO payments (studentPhone, amount, dueDate, paymentDate, status)
+    VALUES (%s, %s, %s, %s, %s)
+''', (
+    phone,
+    amount,
+    datetime.now().strftime('%d-%b-%Y'),
+    datetime.now().strftime('%d-%b-%Y'),
+    'paid'
+))
         conn.commit()
         conn.close()
         
@@ -1188,7 +1198,7 @@ def send_reminder():
         send_sms_flag = data.get('sendSMS', True)
         send_email_flag = data.get('sendEmail', True)
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         sent_count = 0
@@ -1197,7 +1207,7 @@ def send_reminder():
         
         for phone in phones:
             # Get student details
-            cursor.execute('SELECT fullName, email FROM students WHERE phone = ?', (phone,))
+            cursor.execute('SELECT fullName, email FROM students WHERE phone = %s', (phone,))
             student = cursor.fetchone()
             
             if student:
@@ -1207,24 +1217,24 @@ def send_reminder():
                 # Save message to database
                 cursor.execute('''
                     INSERT INTO messages (studentPhone, messageType, message, sentDate)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                 ''', (phone, messageType, message, datetime.now().strftime('%d-%b-%Y %H:%M')))
                 
                 # Send email if enabled
                 if send_email_flag and messageType == 'payment':
-    # ✅ Get monthly rent dynamically
-                 cursor.execute('SELECT monthlyRent FROM students WHERE phone = ?', (phone,))
-                student_rent = cursor.fetchone()
-                rent_amount = student_rent[0] if student_rent else 8000
-                email_sent = send_payment_reminder_email(
-                 student_name,
-                 student_email,
-                 rent_amount,
-                 datetime.now().strftime('%d-%b-%Y')
+    
+                      cursor.execute('SELECT monthlyRent FROM students WHERE phone = %s', (phone,))
+                      student_rent = cursor.fetchone()
+                      rent_amount = student_rent[0] if student_rent else 8000
+                      email_sent = send_payment_reminder_email(
+                      student_name,
+                      student_email,
+                      rent_amount,
+                      datetime.now().strftime('%d-%b-%Y')
                       )
 
-                if not email_sent:
-                        email_errors.append(student_name)
+                      if not email_sent:
+                         email_errors.append(student_name)
                 elif send_email_flag:
                     email_sent = send_announcement_email(
                         student_name,
@@ -1233,7 +1243,7 @@ def send_reminder():
                         message
                     )
                     if not email_sent:
-                        email_errors.append(student_name)
+                           email_errors.append(student_name)
                 
                 # Send SMS if enabled
                 if send_sms_flag:
@@ -1278,10 +1288,10 @@ def send_reminder():
 def send_payment_reminder(phone):
     """Send payment reminder to specific student"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT fullName, email, monthlyRent FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, email, monthlyRent FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         conn.close()
         
@@ -1405,11 +1415,10 @@ def update_student():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone number required'}), 400
         
-        # ✅ CRITICAL FIX: Use DB_FILE
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT * FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -1419,12 +1428,12 @@ def update_student():
         # Update student details
         cursor.execute('''
             UPDATE students 
-            SET fullName = ?,
-                email = ?,
-                roomNumber = ?,
-                roomType = ?,
-                monthlyRent = ?
-            WHERE phone = ?
+            SET fullName = %s,
+                email = %s,
+                roomNumber = %s,
+                roomType = %s,
+                monthlyRent = %s
+            WHERE phone = %s
         ''', (
             data.get('fullName'),
             data.get('email'),
@@ -1458,11 +1467,11 @@ def delete_student(phone):
         return '', 200
         
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Check if student exists
-        cursor.execute('SELECT fullName FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -1475,13 +1484,13 @@ def delete_student(phone):
         student_name = student[0]
         
         # Delete student's payment records first (foreign key constraint)
-        cursor.execute('DELETE FROM payments WHERE studentPhone = ?', (phone,))
+        cursor.execute('DELETE FROM payments WHERE studentPhone = %s', (phone,))
         
         # Delete student's messages
-        cursor.execute('DELETE FROM messages WHERE studentPhone = ?', (phone,))
+        cursor.execute('DELETE FROM messages WHERE studentPhone = %s', (phone,))
         
         # Delete the student
-        cursor.execute('DELETE FROM students WHERE phone = ?', (phone,))
+        cursor.execute('DELETE FROM students WHERE phone = %s', (phone,))
         
         conn.commit()
         conn.close()
@@ -1515,11 +1524,11 @@ def send_reset_code():
         if not email:
             return jsonify({'success': False, 'message': 'Email is required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Find student by email
-        cursor.execute('SELECT fullName, email FROM students WHERE email = ?', (email,))
+        cursor.execute('SELECT fullName, email FROM students WHERE email = %s', (email,))
         student = cursor.fetchone()
 
         if not student:
@@ -1536,12 +1545,12 @@ def send_reset_code():
         expires_at = (datetime.now() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
 
         # Clear previous codes for this email
-        cursor.execute('DELETE FROM password_resets WHERE email = ?', (student_email,))
+        cursor.execute('DELETE FROM password_resets WHERE email = %s', (student_email,))
 
         # Save new code
         cursor.execute('''
             INSERT INTO password_resets (email, code, expires_at)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         ''', (student_email, code, expires_at))
 
         conn.commit()
@@ -1603,10 +1612,10 @@ def verify_reset_code():
         if not email or not code:
             return jsonify({'success': False, 'message': 'Email and code are required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
@@ -1618,7 +1627,7 @@ def verify_reset_code():
         # Check expiry
         expires_at = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
         if datetime.now() > expires_at:
-            cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+            cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired. Please request a new one.'}), 400
@@ -1646,11 +1655,11 @@ def reset_password():
         if not email or not new_password:
             return jsonify({'success': False, 'message': 'Email and new password are required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Make sure there is a valid reset entry (extra safety)
-        cursor.execute('SELECT expires_at FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('SELECT expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
@@ -1660,21 +1669,21 @@ def reset_password():
         expires_at_str = row[0]
         expires_at = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
         if datetime.now() > expires_at:
-            cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+            cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired. Please request a new one.'}), 400
 
         # Update student password by email
         cursor.execute('''
-            UPDATE students SET password = ?
-            WHERE email = ?
+            UPDATE students SET password = %s
+            WHERE email = %s
         ''', (hash_password(new_password), email)) 
 
         conn.commit()
 
         # Remove reset entry
-        cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
         conn.commit()
         conn.close()
 
@@ -1692,7 +1701,7 @@ def send_announcement():
         title = data.get('title', 'Announcement')
         content = data.get('content', '')
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # If no phones specified, send to all
@@ -1703,7 +1712,7 @@ def send_announcement():
         sent_count = 0
         
         for phone in phones:
-            cursor.execute('SELECT fullName, email FROM students WHERE phone = ?', (phone,))
+            cursor.execute('SELECT fullName, email FROM students WHERE phone = %s', (phone,))
             student = cursor.fetchone()
             
             if student:
@@ -1736,7 +1745,7 @@ def send_announcement():
 def get_dashboard_stats():
     """Get admin dashboard statistics"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Total students
@@ -1797,11 +1806,11 @@ def notify_payment():
         method = data.get('method', 'Manual')
         reference = data.get('reference', 'N/A')
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -1814,7 +1823,7 @@ def notify_payment():
         # Create payment record (pending verification)
         cursor.execute('''
             INSERT INTO payments (studentPhone, amount, dueDate, paymentDate, status)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (phone, amount, datetime.now().strftime('%d-%b-%Y'), 
               datetime.now().strftime('%d-%b-%Y'), 'pending_verification'))
         
@@ -1844,12 +1853,12 @@ def handle_inquiry():
         room = data.get('room')
         message = data.get('message')
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
             INSERT INTO inquiries (name, email, phone, room, message, date)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (name, email, phone, room, message, datetime.now().strftime('%d-%b-%Y %H:%M')))
 
         conn.commit()
@@ -1877,7 +1886,7 @@ def handle_inquiry():
 def get_inquiries():
     """Fetch all inquiries for admin dashboard"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute('SELECT * FROM inquiries ORDER BY id DESC')
@@ -1975,7 +1984,7 @@ def admin_send_reset_code():
         if email != ADMIN_EMAIL_FROM_ENV:
          return jsonify({'success': False, 'message': 'Not an admin email'}), 403
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Generate 6-digit reset code
@@ -1985,12 +1994,12 @@ def admin_send_reset_code():
         expires_at = (datetime.now() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
 
         # Clear previous codes for this email
-        cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
 
         # Save new code
         cursor.execute('''
             INSERT INTO password_resets (email, code, expires_at)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         ''', (email, code, expires_at))
 
         conn.commit()
@@ -2049,10 +2058,10 @@ def admin_verify_reset_code():
         if not email or not code:
             return jsonify({'success': False, 'message': 'Email and code are required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
@@ -2064,7 +2073,7 @@ def admin_verify_reset_code():
         # Check expiry
         expires_at = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
         if datetime.now() > expires_at:
-            cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+            cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired'}), 400
@@ -2094,11 +2103,11 @@ def admin_reset_password():
         if not email or not new_password:
             return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Verify reset session
-        cursor.execute('SELECT expires_at FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('SELECT expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
@@ -2110,7 +2119,7 @@ def admin_reset_password():
         # In production, update the admin password in your admin table
 
         # Remove reset entry
-        cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+        cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
         conn.commit()
         conn.close()
 
@@ -2170,7 +2179,7 @@ def admin_login():
 def get_current_bill_status(phone):
     """Check if student has paid current month's electricity bill"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get current month/year
@@ -2179,7 +2188,7 @@ def get_current_bill_status(phone):
         # Check if current bill is paid
         cursor.execute('''
             SELECT * FROM current_bills 
-            WHERE studentPhone = ? AND month = ? AND status = 'paid'
+            WHERE studentPhone = %s AND month = %s AND status = 'paid'
         ''', (phone, current_month))
         
         bill = cursor.fetchone()
@@ -2199,21 +2208,21 @@ def get_current_bill_status(phone):
 def get_student_current_bills(phone):
     """Get current bill history for a specific student"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get all bills for this student
         cursor.execute('''
             SELECT id, amount, month, paymentDate, status, paymentProof
             FROM current_bills
-            WHERE studentPhone = ?
+            WHERE studentPhone = %s
             ORDER BY paymentDate DESC
         ''', (phone,))
         
         bills = cursor.fetchall()
         
         # Also get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         conn.close()
@@ -2266,11 +2275,11 @@ def email_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -2284,7 +2293,7 @@ def email_current_bill():
         # Check if bill is paid
         cursor.execute('''
             SELECT status FROM current_bills 
-            WHERE studentPhone = ? AND month = ?
+            WHERE studentPhone = %s AND month = %s
         ''', (phone, month))
         
         bill = cursor.fetchone()
@@ -2392,11 +2401,11 @@ def pay_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -2413,7 +2422,7 @@ def pay_current_bill():
         # Check if already paid
         cursor.execute('''
             SELECT * FROM current_bills 
-            WHERE studentPhone = ? AND month = ?
+            WHERE studentPhone = %s AND month = %s
         ''', (phone, month))
         
         if cursor.fetchone():
@@ -2423,7 +2432,7 @@ def pay_current_bill():
         # Record payment
         cursor.execute('''
             INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
         
         conn.commit()
@@ -2452,11 +2461,11 @@ def upload_current_bill_proof():
         if not phone or not payment_proof:
             return jsonify({'success': False, 'message': 'Phone and payment proof required'}), 400
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -2473,7 +2482,7 @@ def upload_current_bill_proof():
         # Check if already submitted proof for this month
         cursor.execute('''
             SELECT * FROM current_bills 
-            WHERE studentPhone = ? AND month = ?
+            WHERE studentPhone = %s AND month = %s
         ''', (phone, month))
         
         if cursor.fetchone():
@@ -2483,7 +2492,7 @@ def upload_current_bill_proof():
         # Save payment proof (pending verification)
         cursor.execute('''
             INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status, paymentProof)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'pending_verification', payment_proof))
         
         conn.commit()
@@ -2507,13 +2516,13 @@ def verify_current_bill_payment(phone, month):
         data = request.json
         approve = data.get('approve', True)  # True to approve, False to reject
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get payment record
         cursor.execute('''
             SELECT * FROM current_bills 
-            WHERE studentPhone = ? AND month = ? AND status = 'pending_verification'
+            WHERE studentPhone = %s AND month = %s AND status = 'pending_verification'
         ''', (phone, month))
         
         payment = cursor.fetchone()
@@ -2527,14 +2536,14 @@ def verify_current_bill_payment(phone, month):
             cursor.execute('''
                 UPDATE current_bills 
                 SET status = 'paid'
-                WHERE studentPhone = ? AND month = ?
+                WHERE studentPhone = %s AND month = %s
             ''', (phone, month))
             message = 'Payment approved!'
         else:
             # Reject payment
             cursor.execute('''
                 DELETE FROM current_bills 
-                WHERE studentPhone = ? AND month = ?
+                WHERE studentPhone = %s AND month = %s
             ''', (phone, month))
             message = 'Payment rejected!'
         
@@ -2556,7 +2565,7 @@ def verify_current_bill_payment(phone, month):
 def get_pending_current_bills():
     """Get all pending current bill verifications for admin"""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get all pending verifications with student details
@@ -2609,11 +2618,11 @@ def create_razorpay_order_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         conn.close()
         
@@ -2689,11 +2698,11 @@ def verify_razorpay_current_bill_payment():
             }), 400
         
         # Payment verified! Record in database
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
@@ -2708,7 +2717,7 @@ def verify_razorpay_current_bill_payment():
         # Check if already paid
         cursor.execute('''
             SELECT * FROM current_bills 
-            WHERE studentPhone = ? AND month = ?
+            WHERE studentPhone = %s AND month = %s
         ''', (phone, month))
         
         if cursor.fetchone():
@@ -2721,7 +2730,7 @@ def verify_razorpay_current_bill_payment():
         # Record payment as PAID (Razorpay verified!)
         cursor.execute('''
             INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (phone, 200, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
         
         conn.commit()

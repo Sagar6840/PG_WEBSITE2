@@ -340,11 +340,11 @@ body {
 
   <div class="input-group">
     <label class="icon-label">🔑 Password</label>
-    <input type="password" id="studentPassword" placeholder="Enter password">
+    <input type="password" id="studentPassword" placeholder="Enter password" autocomplete="current-password">
   </div>
 
   <div class="forgot-link">
-    <a href="forgot-password.html">Forgot Password?</a>
+    <a href="./student/forgot-password.html">Forgot Password?</a>
   </div>
 
   <button type="button" onclick="studentLogin()">Login</button>
@@ -403,12 +403,12 @@ body {
 
       <div class="input-group">
         <label class="icon-label">🔒 Create Password</label>
-        <input type="password" id="password" placeholder="Create password">
+        <input type="password" id="password" placeholder="Create password" autocomplete="new-password">
       </div>
 
       <div class="input-group">
         <label class="icon-label">🔒 Confirm Password</label>
-        <input type="password" id="confirmPassword" placeholder="Re-enter password">
+        <input type="password" id="confirmPassword" placeholder="Re-enter password" autocomplete="new-password">
       </div>
 
       <button type="button" onclick="studentSignup()">Create My Account</button>
@@ -426,11 +426,11 @@ body {
 
       <div class="input-group">
         <label class="icon-label">🔑 Password</label>
-        <input type="password" id="adminPassword" placeholder="Enter password">
+        <input type="password" id="adminPassword" placeholder="Enter password" autocomplete="current-password">
       </div>
 
       <div class="forgot-link">
-        <a href="admin-forgot-password.html">Forgot Password?</a>
+        <a href="./admin/admin-forgot-password.html">Forgot Password?</a>
       </div>
 
       <button type="button" onclick="adminLogin()">Login as Admin</button>
@@ -690,7 +690,7 @@ async function studentLogin() {
             }
 
             alert("✅ Login successful!");
-            window.location.href = "dashboard.html";
+            window.location.href = "./student/dashboard.html";
         } else {
             alert("❌ " + (data.message || 'Login failed'));
         }
@@ -730,7 +730,7 @@ async function adminLogin() {
         localStorage.setItem('adminEmail', email);
 
         alert("✅ Admin logged in successfully!");
-        window.location.href = "admin.html";
+        window.location.href = "./admin/admin.html";
     } else {
         alert("❌ " + sanitize(data.message));
     }

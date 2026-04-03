@@ -804,7 +804,7 @@ input::placeholder {
     <button class="menu-btn" id="menuBtn">☰</button>
     <div class="logo">
       <div class="logo-icon">
-  <img src="image.png" alt="AR PG Logo" width="100%">
+  <img src="../assets/image.png" alt="AR PG Logo" width="100%">
 </div>
       <span>AR PG</span>
     </div>
@@ -1160,7 +1160,7 @@ if (typeof window !== 'undefined') {
   
   if (!currentStudentPhone) {
     alert('⚠️ Please login first!');
-    window.location.href = 'auth.html';
+    window.location.href = '../auth.html';
     return;
   }
 })();
@@ -1448,7 +1448,7 @@ async function loadAnnouncements()
       
       if(!currentStudentPhone){
         alert('Please login first!');
-        window.location.href='auth.html';
+        window.location.href='../auth.html';
         return;
       }
       
@@ -1684,7 +1684,7 @@ if (lastPayment && lastPayment.paymentDate) {
     function logout(){
       localStorage.removeItem('currentStudentPhone');
       alert('Logged out successfully!');
-      window.location.href = 'auth.html';
+      window.location.href = '../auth.html';
     }
 
     // Initialize dashboard
