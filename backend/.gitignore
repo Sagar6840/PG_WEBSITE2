@@ -1,8 +1,3 @@
-# ==========================================
-# AR PG Management System - .gitignore
-# ==========================================
-
-# ===== CRITICAL: NEVER COMMIT THESE! =====
 
 # Environment Variables (Contains Secrets!)
 .env
@@ -14,7 +9,6 @@ backend/.env
 arpg_database.db
 backend/*.db
 
-# ===== PYTHON-RELATED =====
 
 # Python Cache
 __pycache__/
@@ -46,7 +40,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# ===== IDE / EDITOR FILES =====
 
 # VSCode
 .vscode/
@@ -127,3 +120,10 @@ yarn.lock
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+.env
+backend/.env
+__pycache__/
+node_modules/
+*.pyc
+.vscode/
