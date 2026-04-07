@@ -1135,8 +1135,9 @@ const BACKEND_URL = (() => {
   //  return `${window.location.protocol}//${hostname}/api`;
     
     // Option 2: If backend is on a different domain (e.g., Render.com)
-     return 'https://arpg-backend.onrender.com/api';
+     return `${window.location.protocol}//${hostname}/api`;
 })();
+
 
 console.log('✅ Using BACKEND_URL:', BACKEND_URL);
 

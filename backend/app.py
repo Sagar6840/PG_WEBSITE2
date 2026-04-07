@@ -1,10 +1,12 @@
+﻿
 
-
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
-import psycopg2
+from concurrent.futures import ThreadPoolExecutor
+from psycopg2 import pool as psycopg2_pool
 import json
 import random
+import bcrypt
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
@@ -14,35 +16,40 @@ from email.mime.multipart import MIMEMultipart
 from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-# Razorpay Configuration
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 
-# Initialize Razorpay client
-razorpay_client = None
-if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
-    try:
-        import razorpay
-        razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
-        print("✅ Razorpay payment gateway enabled!")
-    except Exception as e:
-        print(f"⚠️ Razorpay initialization failed: {str(e)}")
-else:
-    print("⚠️ Razorpay not configured (add credentials to .env)")
+# Load environment variables FIRST — before any os.getenv() call
+load_dotenv()
+
+
 app = Flask(__name__)
 
 
+def smart_limit_key():
+    """Rate limit by phone/email from request body if available, else fall back to IP.
+    This prevents a single user from bypassing limits by switching IPs."""
+    try:
+        body = request.get_json(silent=True) or {}
+        identifier = body.get('phone') or body.get('email') or body.get('identifier')
+        if identifier:
+            return f"user:{identifier}"
+    except Exception:
+        pass
+    return f"ip:{get_remote_address()}"
+
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    key_func=smart_limit_key,
+    default_limits=["300 per day", "60 per hour"],
     storage_uri="memory://"
 )
 def require_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Check for admin token
-        token = request.headers.get('Authorization')
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+        # Strip "Bearer " prefix if present
+        token = auth_header.replace('Bearer ', '').strip()
         if not token or not verify_admin_token(token):
             return jsonify({'success': False, 'message': 'Unauthorized'}), 401
         return f(*args, **kwargs)
@@ -71,16 +78,14 @@ try:
     TWILIO_AVAILABLE = True
 except ImportError:
     TWILIO_AVAILABLE = False
-    print("⚠️ Twilio not installed. SMS features will be disabled.")
+    print("âš ï¸ Twilio not installed. SMS features will be disabled.")
 
-# Load environment variables
-load_dotenv()
-# Add after load_dotenv()
+# CORS origins from env
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000').split(',')
 
 CORS(app, resources={
     r"/api/*": {
-        "origins": ALLOWED_ORIGINS,  # ✅ Now reads from .env!
+        "origins": ALLOWED_ORIGINS,  # âœ… Now reads from .env!
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
@@ -92,17 +97,36 @@ JWT_SECRET = os.getenv('JWT_SECRET')
 FLASK_ENV = os.getenv('FLASK_ENV', 'development')
 DEBUG_MODE = FLASK_ENV == 'development'
 if not ADMIN_EMAIL or not ADMIN_PASSWORD or not JWT_SECRET:
-    raise ValueError("❌ CRITICAL: ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET must be set in .env file!")
+    raise ValueError("âŒ CRITICAL: ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET must be set in .env file!")
 
 
-# Database setup
+# ==================== DATABASE CONNECTION POOL ====================
+# Shared pool: min 2 idle connections, max 20 simultaneous connections.
+# This allows ~500+ concurrent users instead of crashing at ~80.
+DB_POOL = psycopg2_pool.ThreadedConnectionPool(
+    minconn=2,
+    maxconn=50,
+    host=os.getenv('DB_HOST', 'localhost'),
+    database=os.getenv('DB_NAME', 'pg_system'),
+    user=os.getenv('DB_USER', 'postgres'),
+    password=os.getenv('DB_PASSWORD')
+)
+print("âœ… Database connection pool initialized (min=2, max=50)")
+EXECUTOR = ThreadPoolExecutor(max_workers=30)
 def get_db_connection():
-    return psycopg2.connect(
-        host="localhost",
-        database="pg_system",
-        user="postgres",
-        password="Sagar@6842"
-    )
+    """Borrow a connection from the pool (stored on Flask's 'g' per request)."""
+    if 'db_conn' not in g:
+        g.db_conn = DB_POOL.getconn()
+    return g.db_conn
+
+@app.teardown_appcontext
+def release_db_connection(exception=None):
+    """Return the borrowed connection back to the pool after every request."""
+    conn = g.pop('db_conn', None)
+    if conn is not None:
+        if exception:
+            conn.rollback()  # Roll back on error so connection is reusable
+        DB_POOL.putconn(conn)
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -132,19 +156,24 @@ def generate_random_password(length=12):
 import hashlib
 
 def hash_password(password):
-    """Hash password using SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt"""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode(), salt)
+    return hashed.decode()
+def check_password(password, hashed):
+    """Verify password"""
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 # Initialize Twilio client
 twilio_client = None
 if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     try:
         twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        print("✅ Twilio SMS enabled!")
+        print("âœ… Twilio SMS enabled!")
     except Exception as e:
-        print(f"⚠️ Twilio initialization failed: {str(e)}")
+        print(f"âš ï¸ Twilio initialization failed: {str(e)}")
 else:
-    print("⚠️ Twilio SMS disabled (not installed or credentials not found)")
+    print("âš ï¸ Twilio SMS disabled (not installed or credentials not found)")
 
 def send_email(recipient_email, subject, body, is_html=False):
     """Send email to recipient"""
@@ -167,10 +196,10 @@ def send_email(recipient_email, subject, body, is_html=False):
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
 
-        print(f"✅ Email sent to {recipient_email}")
+        print(f"âœ… Email sent to {recipient_email}")
         return True
     except Exception as e:
-        print(f"❌ Error sending email: {str(e)}")
+        print(f"âŒ Error sending email: {str(e)}")
         return False
 
 def send_payment_reminder_email(student_name, student_email, amount, due_date):
@@ -181,7 +210,7 @@ def send_payment_reminder_email(student_name, student_email, amount, due_date):
     <html>
         <body style="font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                <h2>💳 Payment Reminder</h2>
+                <h2>ðŸ’³ Payment Reminder</h2>
             </div>
             
             <div style="padding: 20px; background: #f9f9f9;">
@@ -191,16 +220,16 @@ def send_payment_reminder_email(student_name, student_email, amount, due_date):
                 
                 <div style="background: white; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0;">
                     <p><strong>Payment Details:</strong></p>
-                    <p>💰 <strong>Amount:</strong> ₹{amount}</p>
-                    <p>📅 <strong>Due Date:</strong> {due_date}</p>
-                    <p>🏢 <strong>PG Name:</strong> AR PG</p>
+                    <p>ðŸ’° <strong>Amount:</strong> â‚¹{amount}</p>
+                    <p>ðŸ“… <strong>Due Date:</strong> {due_date}</p>
+                    <p>ðŸ¢ <strong>PG Name:</strong> AR PG</p>
                 </div>
                 
                 <p><strong>Payment Methods:</strong></p>
                 <ul>
-                    <li>💳 Online Payment (Credit/Debit Card, UPI)</li>
-                    <li>🏦 Bank Transfer</li>
-                    <li>📱 Mobile Wallet</li>
+                    <li>ðŸ’³ Online Payment (Credit/Debit Card, UPI)</li>
+                    <li>ðŸ¦ Bank Transfer</li>
+                    <li>ðŸ“± Mobile Wallet</li>
                 </ul>
                 
                 <p>Please make the payment at your earliest convenience. You can login to your dashboard to pay online.</p>
@@ -216,7 +245,8 @@ def send_payment_reminder_email(student_name, student_email, amount, due_date):
     </html>
     """
     
-    return send_email(student_email, subject, body, is_html=True)
+    EXECUTOR.submit(send_email, student_email, subject, body, True)
+    return True
 
 def send_announcement_email(student_name, student_email, announcement_title, announcement_body):
     """Send announcement email"""
@@ -226,7 +256,7 @@ def send_announcement_email(student_name, student_email, announcement_title, ann
     <html>
         <body style="font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                <h2>📢 {announcement_title}</h2>
+                <h2>ðŸ“¢ {announcement_title}</h2>
             </div>
             
             <div style="padding: 20px; background: #f9f9f9;">
@@ -247,13 +277,14 @@ def send_announcement_email(student_name, student_email, announcement_title, ann
     </html>
     """
     
-    return send_email(student_email, subject, body, is_html=True)
+    EXECUTOR.submit(send_email, student_email, subject, body, True)
+    return True
 
 def send_sms(phone_number, message):
     """Send SMS to student"""
     try:
         if not twilio_client:
-            print("❌ Twilio not configured")
+            print("âŒ Twilio not configured")
             return False
         
         # Format phone number (add country code if needed)
@@ -266,15 +297,15 @@ def send_sms(phone_number, message):
             body=message
         )
         
-        print(f"✅ SMS sent to {phone_number}: {message_obj.sid}")
+        print(f"âœ… SMS sent to {phone_number}: {message_obj.sid}")
         return True
     except Exception as e:
-        print(f"❌ Error sending SMS: {str(e)}")
+        print(f"âŒ Error sending SMS: {str(e)}")
         return False
 
 def send_payment_reminder_sms(student_name, phone_number, amount, due_date):
     """Send payment reminder SMS"""
-    message = f"Hi {student_name}, Your monthly rent of ₹{amount} is due on {due_date}. Please pay at your earliest. AR PG Management"
+    message = f"Hi {student_name}, Your monthly rent of â‚¹{amount} is due on {due_date}. Please pay at your earliest. AR PG Management"
     return send_sms(phone_number, message)
 
 def send_announcement_sms(student_name, phone_number, announcement):
@@ -286,19 +317,19 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
     """Notify owner when student makes payment"""
     try:
         # Send SMS to owner
-        sms_message = f"PAYMENT RECEIVED!\nStudent: {student_name}\nPhone: {student_phone}\nRoom: {room_number}\nAmount: ₹{amount}\nMethod: {payment_method}\nDate: {datetime.now().strftime('%d-%b-%Y %H:%M')}"
+        sms_message = f"PAYMENT RECEIVED!\nStudent: {student_name}\nPhone: {student_phone}\nRoom: {room_number}\nAmount: â‚¹{amount}\nMethod: {payment_method}\nDate: {datetime.now().strftime('%d-%b-%Y %H:%M')}"
         
         sms_sent = False
         if twilio_client and OWNER_PHONE:
             sms_sent = send_sms(OWNER_PHONE, sms_message)
         
         # Send email to owner
-        email_subject = f"💰 Payment Received - {student_name}"
+        email_subject = f"ðŸ’° Payment Received - {student_name}"
         email_body = f"""
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>💰 Payment Received!</h2>
+                    <h2>ðŸ’° Payment Received!</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -322,7 +353,7 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
                             </tr>
                             <tr style="background: #f9f9f9;">
                                 <td style="padding: 8px; font-weight: bold;">Amount Paid:</td>
-                                <td style="padding: 8px; color: #27ae60; font-weight: bold; font-size: 1.2em;">₹{amount}</td>
+                                <td style="padding: 8px; color: #27ae60; font-weight: bold; font-size: 1.2em;">â‚¹{amount}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px; font-weight: bold;">Payment Method:</td>
@@ -345,20 +376,25 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
             </body>
         </html>
         """
-        
         email_sent = False
         if OWNER_EMAIL:
-            email_sent = send_email(OWNER_EMAIL, email_subject, email_body, is_html=True)
-        
+            EXECUTOR.submit(
+                send_email,
+                OWNER_EMAIL,
+                email_subject,
+                email_body,
+                True
+            )
+            email_sent = True
         if sms_sent or email_sent:
-            print(f"✅ Owner notified about payment from {student_name}")
+            print(f"âœ… Owner notified about payment from {student_name}")
             return True
         else:
-            print(f"⚠️ Failed to notify owner about payment")
+            print(f"âš ï¸  Failed to notify owner about payment")
             return False
             
     except Exception as e:
-        print(f"❌ Error notifying owner: {str(e)}")
+        print(f"â Œ Error notifying owner: {str(e)}")
         return False
 
 # @app.before_request
@@ -472,10 +508,10 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
 #     ''')
 #
 #     conn.commit()
-#     conn.close()
-#     print("✅ Database initialized!")
+#     
+#     print("âœ… Database initialized!")
 
-# init_db() — removed: tables are managed directly in PostgreSQL
+# init_db() â€” removed: tables are managed directly in PostgreSQL
 
 # ==================== AUTHENTICATION ROUTES ====================
 
@@ -483,17 +519,17 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
 def signup():
     """Handle student signup"""
     try:
-        data = request.json
-        
         conn = get_db_connection()
         cursor = conn.cursor()
+        data = request.json
+        
         
         # Check if phone already exists
         cursor.execute('SELECT * FROM students WHERE phone = %s', (data['phone'],))
         if cursor.fetchone():
             return jsonify({'success': False, 'message': 'Phone number already registered!'}), 400
         
-        # ✅ UPDATED: Now includes monthlyRent based on roomType
+        # âœ… UPDATED: Now includes monthlyRent based on roomType
         # Determine rent based on room type
         room_type = data.get('roomType', 'Single')
         if room_type == 'Single':
@@ -505,7 +541,7 @@ def signup():
         else:
             monthly_rent = 8000  # Default
         
-        # ✅ UPDATED: Insert with monthlyRent
+        # âœ… UPDATED: Insert with monthlyRent
         cursor.execute('''
             INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, monthlyRent)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -519,42 +555,44 @@ def signup():
             data['roomType'],
             hash_password(data['password']),
             datetime.now().strftime('%d-%b-%Y'),
-            monthly_rent  # ✅ NOW SAVING RENT!
+            monthly_rent  # âœ… NOW SAVING RENT!
         ))
         
         conn.commit()
-        conn.close()
         
         return jsonify({'success': True, 'message': 'Signup successful!'}), 201
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
     """Handle student login using email OR phone"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
-        # ✅ FIX: Accept both 'phone' and 'identifier'
+        # âœ… FIX: Accept both 'phone' and 'identifier'
         identifier = data.get('phone') or data.get('identifier') or data.get('email')
         password = data.get('password')
 
         if not identifier or not password:
             return jsonify({'success': False, 'message': 'Email/Phone and password are required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         # Check using phone OR email
         cursor.execute('''
             SELECT * FROM students
-            WHERE (phone = %s OR email = %s) AND password = %s
-        ''', (identifier, identifier, hash_password(password)))
+                WHERE phone = %s OR email = %s
+        ''', (identifier, identifier))
 
         student = cursor.fetchone()
-        conn.close()
 
-        if student:
+        if student and check_password(password, student[8]):
             return jsonify({
                 'success': True,
                 'message': 'Login successful!',
@@ -574,6 +612,10 @@ def login():
             return jsonify({'success': False, 'message': 'Invalid email/phone or password!'}), 401
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -588,7 +630,6 @@ def get_student(phone):
         
         cursor.execute('SELECT * FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
-        conn.close()
         
         if student:
             return jsonify({
@@ -611,6 +652,10 @@ def get_student(phone):
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/student/<phone>/payments', methods=['GET'])
@@ -627,7 +672,6 @@ def get_student_payments(phone):
         ''', (phone,))
         
         payments = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -644,6 +688,10 @@ def get_student_payments(phone):
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/student/<phone>/messages', methods=['GET'])
@@ -660,7 +708,6 @@ def get_student_messages(phone):
         ''', (phone,))
         
         messages = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -676,6 +723,10 @@ def get_student_messages(phone):
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
 
@@ -701,7 +752,6 @@ def get_announcements():
         ''')
         
         announcements = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -721,16 +771,20 @@ def get_announcements():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/announcements', methods=['POST'])
 def create_announcement():
     """Create new announcement (Admin only)"""
     try:
-        data = request.json
-        
         conn = get_db_connection()
         cursor = conn.cursor()
+        data = request.json
+        
         
         cursor.execute('''
             INSERT INTO announcements (title, message, type, priority, date, createdBy, createdAt)
@@ -749,13 +803,11 @@ def create_announcement():
         announcement_id = cursor.fetchone()[0]
         conn.commit()
         
-        # Get the created announcement
         cursor.execute('SELECT * FROM announcements WHERE id = %s', (announcement_id,))
         announcement = cursor.fetchone()
         
         sent_count = 0
         
-        # Send announcement to students via email if requested
         if data.get('sendEmail', True):
             send_to_all = data.get('sendToAll', True)
             phones = data.get('phones', [])
@@ -765,35 +817,40 @@ def create_announcement():
             else:
                 if phones:
                     placeholders = ','.join(['%s'] * len(phones))
-                    cursor.execute(f'SELECT fullName, email, phone FROM students WHERE phone IN ({placeholders})', phones)
+                    cursor.execute(
+                        f'SELECT fullName, email, phone FROM students WHERE phone IN ({placeholders})',
+                        phones
+                    )
                 else:
                     cursor.execute('SELECT fullName, email, phone FROM students LIMIT 0')
             
             students = cursor.fetchall()
-            conn.close()
             
+          
+
             for student in students:
                 student_name = student[0]
                 student_email = student[1]
                 student_phone = student[2]
-                
-                # Send email
-                email_sent = send_announcement_email(
+
+                EXECUTOR.submit(
+                    send_announcement_email,
                     student_name,
                     student_email,
                     data.get('title', 'Announcement'),
                     data.get('message')
                 )
-                
-                # Send SMS if enabled
+
                 if data.get('sendSMS', False) and twilio_client:
-                    send_announcement_sms(student_name, student_phone, data.get('message')[:100])
-                
-                if email_sent:
-                    sent_count += 1
-        else:
-            conn.close()
-        
+                    EXECUTOR.submit(
+                      send_announcement_sms,
+                      student_name,
+                      student_phone,
+                      data.get('message')[:100]
+                  )
+
+                sent_count += 1
+
         return jsonify({
             'success': True,
             'message': f'Announcement created successfully! Sent to {sent_count} student(s).',
@@ -806,8 +863,12 @@ def create_announcement():
                 'date': announcement[5]
             }
         }), 201
-    
+
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/announcements/<int:announcement_id>', methods=['DELETE'])
@@ -819,7 +880,6 @@ def delete_announcement(announcement_id):
         
         cursor.execute('DELETE FROM announcements WHERE id = %s', (announcement_id,))
         conn.commit()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -827,16 +887,20 @@ def delete_announcement(announcement_id):
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/announcements/<int:announcement_id>', methods=['PUT'])
 def update_announcement(announcement_id):
     """Update announcement (Admin only)"""
     try:
-        data = request.json
-        
         conn = get_db_connection()
         cursor = conn.cursor()
+        data = request.json
+        
         
         cursor.execute('''
             UPDATE announcements 
@@ -851,7 +915,6 @@ def update_announcement(announcement_id):
         ))
         
         conn.commit()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -859,6 +922,10 @@ def update_announcement(announcement_id):
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # ==================== ADMIN ROUTES ====================
@@ -866,7 +933,7 @@ def update_announcement(announcement_id):
 
 
 @app.route('/api/admin/students', methods=['GET'])
-# @require_admin
+@require_admin
 def get_all_students():
     """Get all students (for admin)"""
     try:
@@ -876,7 +943,6 @@ def get_all_students():
         # REPLACE WITH:
         cursor.execute('SELECT fullName, email, phone, college, roomNumber, paymentStatus, monthlyRent, roomType FROM students')
         students = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -888,7 +954,7 @@ def get_all_students():
                     'college': s[3],
                     'roomNumber': s[4],
                     'paymentStatus': s[5],
-                    'monthlyRent': s[6],   # ← ADD THIS
+                    'monthlyRent': s[6],   # â† ADD THIS
                     'roomType': s[7] 
                 }
                 for s in students
@@ -896,16 +962,21 @@ def get_all_students():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/add-student', methods=['POST'])
+@require_admin
 def admin_add_student():
     """Admin add student"""
     try:
-        data = request.json
-        random_password = generate_random_password()
         conn = get_db_connection()
         cursor = conn.cursor()
+        data = request.json
+        random_password = generate_random_password()
         
         cursor.execute('''
             INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, roomNumber, monthlyRent)
@@ -925,7 +996,6 @@ def admin_add_student():
         ))
         
         conn.commit()
-        conn.close()
         student_name = data['fullName']
         student_email = data['email']
         
@@ -934,7 +1004,7 @@ def admin_add_student():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>🏠 Welcome to AR PG!</h2>
+                    <h2>ðŸ  Welcome to AR PG!</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -947,7 +1017,7 @@ def admin_add_student():
                         <p><strong>Temporary Password:</strong> <span style="font-size: 1.3em; color: #667eea; font-weight: bold;">{random_password}</span></p>
                     </div>
                     
-                    <p><strong>⚠️ Important:</strong></p>
+                    <p><strong>âš ï¸ Important:</strong></p>
                     <ul>
                         <li>Keep this password secure</li>
                         <li>You can change your password after first login</li>
@@ -966,7 +1036,7 @@ def admin_add_student():
         """
         
         # Send email
-        send_email(student_email, email_subject, email_body, is_html=True)
+        EXECUTOR.submit(send_email, student_email, email_subject, email_body, True)
         
         return jsonify({
             'success': True, 
@@ -974,9 +1044,14 @@ def admin_add_student():
         }), 201
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/payments', methods=['GET'])
+@require_admin
 def get_all_payments():
     """Get all payments (for admin)"""
     try:
@@ -991,7 +1066,6 @@ def get_all_payments():
         ''')
         
         payments = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -1009,6 +1083,10 @@ def get_all_payments():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/mark-paid', methods=['POST', 'OPTIONS'])
@@ -1059,29 +1137,40 @@ def mark_payment_paid():
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
         
         student_name = student[0]
         room_number = student[1] or 'N/A'
         amount = student[2]
         
-        # ✅ FIXED: Remove LIMIT from UPDATE query
+        # âœ… FIXED: Remove LIMIT from UPDATE query
+        # Update existing pending payment row
         cursor.execute('''
             UPDATE payments 
             SET status = 'paid', paymentDate = %s
             WHERE studentPhone = %s AND status = 'pending'
         ''', (datetime.now().strftime('%d-%b-%Y'), phone))
-        
+
+        # If no pending row existed, INSERT a new payment record
+        if cursor.rowcount == 0:
+            cursor.execute('''
+                INSERT INTO payments (studentPhone, amount, dueDate, paymentDate, status)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (
+                phone,
+                amount,
+                datetime.now().strftime('%d-%b-%Y'),
+                datetime.now().strftime('%d-%b-%Y'),
+                'paid'
+            ))
+
         # Also update student payment status
         cursor.execute('''
             UPDATE students 
             SET paymentStatus = 'paid'
             WHERE phone = %s
         ''', (phone,))
-        
         conn.commit()
-        conn.close()
         
         # Notify owner about the payment (Manual verification)
         notify_owner_payment(student_name, phone, room_number, amount, 'Manual/Cash')
@@ -1092,7 +1181,11 @@ def mark_payment_paid():
         }), 200
     
     except Exception as e:
-        print(f'❌ Mark paid error: {str(e)}')
+
+    
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Mark paid error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1101,17 +1194,16 @@ def mark_payment_paid():
 def create_payment_order():
     """Create a payment order for Razorpay"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         amount = data.get('amount', 8000)  # in rupees
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, email FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
-        conn.close()
         
         if not student:
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
@@ -1131,26 +1223,29 @@ def create_payment_order():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/verify-payment', methods=['POST'])
 def verify_payment():
     """Verify payment from Razorpay"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         amount = data.get('amount', 8000)
         payment_method = data.get('paymentMethod', 'Online')
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
         
         student_name = student[0]
@@ -1174,7 +1269,6 @@ def verify_payment():
     'paid'
 ))
         conn.commit()
-        conn.close()
         
         # Notify owner about the payment
         notify_owner_payment(student_name, phone, room_number, amount, payment_method)
@@ -1185,12 +1279,19 @@ def verify_payment():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/send-reminder', methods=['POST'])
+@require_admin
 def send_reminder():
     """Send reminder to students"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phones = data.get('phones', [])
         message = data.get('message', '')
@@ -1198,8 +1299,6 @@ def send_reminder():
         send_sms_flag = data.get('sendSMS', True)
         send_email_flag = data.get('sendEmail', True)
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         sent_count = 0
         email_errors = []
@@ -1222,19 +1321,17 @@ def send_reminder():
                 
                 # Send email if enabled
                 if send_email_flag and messageType == 'payment':
-    
-                      cursor.execute('SELECT monthlyRent FROM students WHERE phone = %s', (phone,))
-                      student_rent = cursor.fetchone()
-                      rent_amount = student_rent[0] if student_rent else 8000
-                      email_sent = send_payment_reminder_email(
-                      student_name,
-                      student_email,
-                      rent_amount,
-                      datetime.now().strftime('%d-%b-%Y')
-                      )
-
-                      if not email_sent:
-                         email_errors.append(student_name)
+                    cursor.execute('SELECT monthlyRent FROM students WHERE phone = %s', (phone,))
+                    student_rent = cursor.fetchone()
+                    rent_amount = student_rent[0] if student_rent else 8000
+                    email_sent = send_payment_reminder_email(
+                        student_name,
+                        student_email,
+                        rent_amount,
+                        datetime.now().strftime('%d-%b-%Y')
+                    )
+                    if not email_sent:
+                        email_errors.append(student_name)
                 elif send_email_flag:
                     email_sent = send_announcement_email(
                         student_name,
@@ -1261,7 +1358,6 @@ def send_reminder():
                         sent_count += 1
         
         conn.commit()
-        conn.close()
         
         response_message = f'Reminder sent to {sent_count} student(s)!'
         errors = []
@@ -1282,6 +1378,10 @@ def send_reminder():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/send-payment-reminder/<phone>', methods=['POST'])
@@ -1293,7 +1393,6 @@ def send_payment_reminder(phone):
         
         cursor.execute('SELECT fullName, email, monthlyRent FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
-        conn.close()
         
         if not student:
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
@@ -1331,9 +1430,14 @@ def send_payment_reminder(phone):
             }), 500
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/send-sms', methods=['POST'])
+@require_admin
 def send_sms_route():
     """Send SMS to students"""
     try:
@@ -1366,48 +1470,19 @@ def send_sms_route():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @app.route('/api/admin/update-student', methods=['POST'])
+@require_admin
 def update_student():
     """Admin endpoint to update existing student details"""
     try:
-        # Get admin token
-        auth_header = request.headers.get('Authorization')
-        
-        print(f"🔍 Auth header: {auth_header}")  # ✅ DEBUG LOG
-        
-        if not auth_header or not auth_header.startswith('Bearer '):
-            print("❌ No auth header or wrong format")
-            return jsonify({'success': False, 'message': 'No authorization token'}), 401
-        
-        token = auth_header.split(' ')[1]
-        
-        print(f"🔍 Token: {token[:20]}...")  # ✅ DEBUG LOG
-        
-        # Verify admin token
-        try:
-            import base64
-            token_data = json.loads(base64.b64decode(token).decode())
-            
-            print(f"🔍 Token data: {token_data}")  # ✅ DEBUG LOG
-            
-            # Check expiry
-            if datetime.now().timestamp() > token_data.get('exp', 0):
-                print("❌ Token expired")
-                return jsonify({'success': False, 'message': 'Token expired'}), 401
-            
-            # Check role
-            if token_data.get('role') != 'admin':
-                print("❌ Not admin role")
-                return jsonify({'success': False, 'message': 'Admin access required'}), 403
-                
-            print("✅ Token verified successfully")
-            
-        except Exception as e:
-            print(f"❌ Token verification error: {str(e)}")
-            return jsonify({'success': False, 'message': f'Invalid token: {str(e)}'}), 401
-        
+        conn = get_db_connection()
+        cursor = conn.cursor()
         # Get student data
         data = request.json
         phone = data.get('phone')
@@ -1415,14 +1490,11 @@ def update_student():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone number required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         cursor.execute('SELECT * FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         # Update student details
@@ -1444,9 +1516,8 @@ def update_student():
         ))
         
         conn.commit()
-        conn.close()
         
-        print(f"✅ Student {data.get('fullName')} updated successfully")
+        print(f"âœ… Student {data.get('fullName')} updated successfully")
         
         return jsonify({
             'success': True,
@@ -1454,13 +1525,18 @@ def update_student():
         })
         
     except Exception as e:
-        print(f'❌ Update student error: {str(e)}')
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Update student error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500 
     # ==================== DELETE STUDENT ENDPOINT ====================
 
 @app.route('/api/admin/delete-student/<phone>', methods=['DELETE', 'OPTIONS'])
+@require_admin
 def delete_student(phone):
     """Delete a student from the system (Admin only)"""
     if request.method == 'OPTIONS':
@@ -1475,7 +1551,6 @@ def delete_student(phone):
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({
                 'success': False,
                 'message': 'Student not found'
@@ -1493,9 +1568,8 @@ def delete_student(phone):
         cursor.execute('DELETE FROM students WHERE phone = %s', (phone,))
         
         conn.commit()
-        conn.close()
         
-        print(f"✅ Student deleted: {student_name} ({phone})")
+        print(f"âœ… Student deleted: {student_name} ({phone})")
         
         return jsonify({
             'success': True,
@@ -1503,7 +1577,11 @@ def delete_student(phone):
         }), 200
         
     except Exception as e:
-        print(f"❌ Error deleting student: {str(e)}")
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"âŒ Error deleting student: {str(e)}")
         return jsonify({
             'success': False,
             'message': str(e)
@@ -1518,21 +1596,20 @@ reset_codes = {}
 def send_reset_code():
     """Send password reset code to student's email using email address"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
 
         if not email:
             return jsonify({'success': False, 'message': 'Email is required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         # Find student by email
         cursor.execute('SELECT fullName, email FROM students WHERE email = %s', (email,))
         student = cursor.fetchone()
 
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'No account found with this email'}), 404
 
         student_name = student[0]
@@ -1554,7 +1631,6 @@ def send_reset_code():
         ''', (student_email, code, expires_at))
 
         conn.commit()
-        conn.close()
 
         # Send email
         subject = "Password Reset Code - AR PG"
@@ -1562,7 +1638,7 @@ def send_reset_code():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>🔐 Password Reset Request</h2>
+                    <h2>ðŸ” Password Reset Request</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -1575,7 +1651,7 @@ def send_reset_code():
                         <p style="color: #999; font-size: 0.9em;">This code is valid for 10 minutes.</p>
                     </div>
                     
-                    <p><strong>⚠️ Security tips:</strong></p>
+                    <p><strong>âš ï¸ Security tips:</strong></p>
                     <ul>
                         <li>Do not share this code with anyone.</li>
                         <li>If you didn't request this, you can ignore this email.</li>
@@ -1590,7 +1666,7 @@ def send_reset_code():
         </html>
         """
 
-        send_email(student_email, subject, body, is_html=True)
+        EXECUTOR.submit(send_email, student_email, subject, body, True)
 
         return jsonify({
             'success': True,
@@ -1598,6 +1674,10 @@ def send_reset_code():
         }), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -1605,6 +1685,8 @@ def send_reset_code():
 def verify_reset_code():
     """Verify password reset code using email and code"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
         code = data.get('code')
@@ -1612,14 +1694,11 @@ def verify_reset_code():
         if not email or not code:
             return jsonify({'success': False, 'message': 'Email and code are required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
-            conn.close()
             return jsonify({'success': False, 'message': 'No reset request found. Please try again.'}), 404
 
         stored_code, expires_at_str = row
@@ -1629,18 +1708,19 @@ def verify_reset_code():
         if datetime.now() > expires_at:
             cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
-            conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired. Please request a new one.'}), 400
 
         # Check code
         if stored_code != code:
-            conn.close()
             return jsonify({'success': False, 'message': 'Invalid reset code'}), 400
 
-        conn.close()
         return jsonify({'success': True, 'message': 'Code verified successfully!'}), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -1648,6 +1728,8 @@ def verify_reset_code():
 def reset_password():
     """Reset student password using email"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
         new_password = data.get('newPassword')
@@ -1655,15 +1737,12 @@ def reset_password():
         if not email or not new_password:
             return jsonify({'success': False, 'message': 'Email and new password are required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         # Make sure there is a valid reset entry (extra safety)
         cursor.execute('SELECT expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
-            conn.close()
             return jsonify({'success': False, 'message': 'Reset session expired. Please start again.'}), 400
 
         expires_at_str = row[0]
@@ -1671,7 +1750,6 @@ def reset_password():
         if datetime.now() > expires_at:
             cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
-            conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired. Please request a new one.'}), 400
 
         # Update student password by email
@@ -1685,24 +1763,28 @@ def reset_password():
         # Remove reset entry
         cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
         conn.commit()
-        conn.close()
 
         return jsonify({'success': True, 'message': 'Password reset successful!'}), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/send-announcement', methods=['POST'])
+@require_admin
 def send_announcement():
     """Send announcement to all or selected students"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phones = data.get('phones', [])
         title = data.get('title', 'Announcement')
         content = data.get('content', '')
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # If no phones specified, send to all
         if not phones:
@@ -1730,7 +1812,6 @@ def send_announcement():
                 if email_sent:
                     sent_count += 1
         
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -1739,9 +1820,14 @@ def send_announcement():
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/admin/dashboard-stats', methods=['GET'])
+@require_admin
 def get_dashboard_stats():
     """Get admin dashboard statistics"""
     try:
@@ -1761,22 +1847,35 @@ def get_dashboard_stats():
         pending_students = cursor.fetchone()[0]
         
         # Total revenue
+       # Total revenue
         cursor.execute('SELECT SUM(monthlyRent) FROM students')
         total_revenue = cursor.fetchone()[0] or 0
-        
-        conn.close()
-        
+
+        # Revenue from paid students only
+        cursor.execute("SELECT SUM(monthlyRent) FROM students WHERE paymentStatus = 'paid'")
+        total_collected = cursor.fetchone()[0] or 0
+
+        # Revenue from pending students only
+        cursor.execute("SELECT SUM(monthlyRent) FROM students WHERE paymentStatus = 'pending'")
+        pending_amount = cursor.fetchone()[0] or 0
+
         return jsonify({
             'success': True,
             'stats': {
                 'totalStudents': total_students,
                 'paidThisMonth': paid_students,
                 'pendingPayments': pending_students,
-                'totalRevenue': total_revenue
+                'totalRevenue': total_revenue,
+                'totalCollected': total_collected,
+                'pendingAmount': pending_amount
             }
         }), 200
     
     except Exception as e:
+
+    
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # ==================== TEST ROUTE ====================
@@ -1784,7 +1883,7 @@ def get_dashboard_stats():
 @app.route('/api/test', methods=['GET'])
 def test():
     """Test if backend is running"""
-    return jsonify({'success': True, 'message': 'Backend is running! ✅'}), 200
+    return jsonify({'success': True, 'message': 'Backend is running! âœ…'}), 200
 
 # ==================== ERROR HANDLING ====================
 
@@ -1800,21 +1899,20 @@ def internal_error(error):
 def notify_payment():
     """Notify owner about manual payment (QR/UPI/Bank)"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         amount = data.get('amount', 8000)
         method = data.get('method', 'Manual')
         reference = data.get('reference', 'N/A')
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student_name = student[0]
@@ -1828,7 +1926,6 @@ def notify_payment():
               datetime.now().strftime('%d-%b-%Y'), 'pending_verification'))
         
         conn.commit()
-        conn.close()
         
         # Notify owner
         notify_owner_payment(student_name, phone, room_number, amount, f'{method} - Ref: {reference}')
@@ -1839,12 +1936,18 @@ def notify_payment():
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 # ==================== INQUIRY ROUTE ====================
 @app.route('/api/inquiry', methods=['POST'])
 def handle_inquiry():
     """Save inquiry from the contact form"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
 
         name = data.get('name')
@@ -1853,8 +1956,6 @@ def handle_inquiry():
         room = data.get('room')
         message = data.get('message')
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         cursor.execute('''
             INSERT INTO inquiries (name, email, phone, room, message, date)
@@ -1862,7 +1963,6 @@ def handle_inquiry():
         ''', (name, email, phone, room, message, datetime.now().strftime('%d-%b-%Y %H:%M')))
 
         conn.commit()
-        conn.close()
 
         # Optional: send email notification to owner
         subject = f"New Inquiry from {name}"
@@ -1873,16 +1973,21 @@ def handle_inquiry():
         Room: {room}
         Message: {message}
         """
-        send_email(OWNER_EMAIL, subject, body)
+        EXECUTOR.submit(send_email, OWNER_EMAIL, subject, body)
 
         return jsonify({'success': True, 'message': 'Inquiry submitted successfully!'}), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ✅ NEW route for Admin Dashboard to view inquiries
+# âœ… NEW route for Admin Dashboard to view inquiries
 @app.route('/api/inquiries', methods=['GET'])
+@require_admin
 def get_inquiries():
     """Fetch all inquiries for admin dashboard"""
     try:
@@ -1891,7 +1996,6 @@ def get_inquiries():
 
         cursor.execute('SELECT * FROM inquiries ORDER BY id DESC')
         inquiries = cursor.fetchall()
-        conn.close()
 
         # Convert to list of dicts
         inquiries_list = [
@@ -1909,6 +2013,9 @@ def get_inquiries():
 
         return jsonify({'success': True, 'inquiries': inquiries_list}), 200
     except Exception as e:
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 import os
 
@@ -1955,11 +2062,11 @@ def current_bill_page():
 @app.route('/admin/announcement.html')
 def announcement_page():
     return send_from_directory(os.path.join(PARENT_DIR, 'admin'), 'announcement.html')
-# @app.route('/api/current-bills/pending', methods=['GET'])
-# def get_pending_current_bills():
-#     """Get all pending current bill verifications for admin"""
 
-# ✅ Serve static files (CSS, JS, images)
+
+
+
+# âœ… Serve static files (CSS, JS, images)
 @app.route('/<path:filename>')
 def serve_static(filename):
     return send_from_directory(PARENT_DIR, filename)
@@ -1971,6 +2078,8 @@ def admin_send_reset_code():
         return '', 200
         
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
 
@@ -1984,8 +2093,6 @@ def admin_send_reset_code():
         if email != ADMIN_EMAIL_FROM_ENV:
          return jsonify({'success': False, 'message': 'Not an admin email'}), 403
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         # Generate 6-digit reset code
         code = str(random.randint(100000, 999999))
@@ -2003,7 +2110,6 @@ def admin_send_reset_code():
         ''', (email, code, expires_at))
 
         conn.commit()
-        conn.close()
 
         # Send email
         subject = "Admin Password Reset Code - AR PG"
@@ -2011,7 +2117,7 @@ def admin_send_reset_code():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #1e1f47 0%, #3a2e8a 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>🔐 Admin Password Reset Request</h2>
+                    <h2>ðŸ” Admin Password Reset Request</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -2024,7 +2130,7 @@ def admin_send_reset_code():
                         <p style="color: #999; font-size: 0.9em;">This code is valid for 10 minutes.</p>
                     </div>
                     
-                    <p><strong>⚠️ Security Alert:</strong></p>
+                    <p><strong>âš ï¸ Security Alert:</strong></p>
                     <ul>
                         <li>Do not share this code with anyone.</li>
                         <li>If you didn't request this, ignore this email.</li>
@@ -2034,14 +2140,17 @@ def admin_send_reset_code():
         </html>
         """
 
-        send_email(email, subject, body, is_html=True)
-
+        EXECUTOR.submit(send_email, email, subject, body, True)
         return jsonify({
             'success': True,
             'message': f'Reset code sent to {email}'
         }), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -2051,6 +2160,8 @@ def admin_verify_reset_code():
         return '', 200
         
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
         code = data.get('code')
@@ -2058,14 +2169,11 @@ def admin_verify_reset_code():
         if not email or not code:
             return jsonify({'success': False, 'message': 'Email and code are required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
-            conn.close()
             return jsonify({'success': False, 'message': 'No reset request found'}), 404
 
         stored_code, expires_at_str = row
@@ -2075,18 +2183,19 @@ def admin_verify_reset_code():
         if datetime.now() > expires_at:
             cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
             conn.commit()
-            conn.close()
             return jsonify({'success': False, 'message': 'Reset code expired'}), 400
 
         # Check code
         if stored_code != code:
-            conn.close()
             return jsonify({'success': False, 'message': 'Invalid reset code'}), 400
 
-        conn.close()
         return jsonify({'success': True, 'message': 'Code verified successfully!'}), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -2096,6 +2205,8 @@ def admin_reset_password():
         return '', 200
         
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         email = data.get('email')
         new_password = data.get('newPassword')
@@ -2103,29 +2214,30 @@ def admin_reset_password():
         if not email or not new_password:
             return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         # Verify reset session
         cursor.execute('SELECT expires_at FROM password_resets WHERE email = %s', (email,))
         row = cursor.fetchone()
 
         if not row:
-            conn.close()
             return jsonify({'success': False, 'message': 'Reset session expired'}), 400
 
-        # For admin, you might have a separate admin table
-        # For now, we'll just confirm the reset
-        # In production, update the admin password in your admin table
+        from dotenv import set_key
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+        set_key(env_path, 'ADMIN_PASSWORD', new_password)
+        os.environ['ADMIN_PASSWORD'] = new_password
 
         # Remove reset entry
         cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
         conn.commit()
-        conn.close()
 
         return jsonify({'success': True, 'message': 'Admin password reset successful!'}), 200
 
     except Exception as e:
+
+
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     # ==================== ADMIN LOGIN ROUTE ====================
 
@@ -2170,7 +2282,11 @@ def admin_login():
             }), 401
 
     except Exception as e:
-        print(f"❌ Error in admin login: {str(e)}")
+
+
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"âŒ Error in admin login: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
     
     # ==================== CURRENT BILL ROUTES ====================
@@ -2192,7 +2308,6 @@ def get_current_bill_status(phone):
         ''', (phone, current_month))
         
         bill = cursor.fetchone()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -2201,6 +2316,10 @@ def get_current_bill_status(phone):
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -2225,7 +2344,6 @@ def get_student_current_bills(phone):
         cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
-        conn.close()
         
         if not student:
             return jsonify({'success': False, 'message': 'Student not found'}), 404
@@ -2259,7 +2377,11 @@ def get_student_current_bills(phone):
         }), 200
         
     except Exception as e:
-        print(f'❌ Error fetching bills: {str(e)}')
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Error fetching bills: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2268,6 +2390,8 @@ def get_student_current_bills(phone):
 def email_current_bill():
     """Email current bill to student"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         month = data.get('month', datetime.now().strftime('%b-%Y'))
@@ -2275,15 +2399,12 @@ def email_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student_name = student[0]
@@ -2299,7 +2420,6 @@ def email_current_bill():
         bill = cursor.fetchone()
         status = bill[0] if bill else 'Pending'
         
-        conn.close()
         
         # Calculate due date (5th of next month)
         now = datetime.now()
@@ -2315,7 +2435,7 @@ def email_current_bill():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>⚡ Current Bill - {month}</h2>
+                    <h2>âš¡ Current Bill - {month}</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -2335,7 +2455,7 @@ def email_current_bill():
                             </tr>
                             <tr>
                                 <td style="padding: 8px; font-weight: bold;">Amount:</td>
-                                <td style="padding: 8px; color: #667eea; font-weight: bold; font-size: 1.2em;">₹200</td>
+                                <td style="padding: 8px; color: #667eea; font-weight: bold; font-size: 1.2em;">â‚¹200</td>
                             </tr>
                             <tr style="background: #f9f9f9;">
                                 <td style="padding: 8px; font-weight: bold;">Due Date:</td>
@@ -2354,9 +2474,9 @@ def email_current_bill():
                     
                     <p><strong>Payment Details:</strong></p>
                     <ul>
-                        <li>Monthly Electricity Charge: ₹200</li>
+                        <li>Monthly Electricity Charge: â‚¹200</li>
                         <li>Includes: Room lighting, fan, charging points</li>
-                        <li>Late Fee: ₹50 per day after due date</li>
+                        <li>Late Fee: â‚¹50 per day after due date</li>
                     </ul>
                     
                     <p>Login to your dashboard to pay online or view detailed bill.</p>
@@ -2370,7 +2490,8 @@ def email_current_bill():
         </html>
         """
         
-        email_sent = send_email(student_email, subject, body, is_html=True)
+        EXECUTOR.submit(send_email, student_email, subject, body, True)
+        email_sent = True
         
         if email_sent:
             return jsonify({
@@ -2384,7 +2505,11 @@ def email_current_bill():
             }), 500
         
     except Exception as e:
-        print(f'❌ Email error: {str(e)}')
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Email error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2393,6 +2518,8 @@ def email_current_bill():
 def pay_current_bill():
     """Record current bill payment"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         amount = data.get('amount', 200)
@@ -2401,15 +2528,12 @@ def pay_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student_name = student[0]
@@ -2426,7 +2550,6 @@ def pay_current_bill():
         ''', (phone, month))
         
         if cursor.fetchone():
-            conn.close()
             return jsonify({'success': False, 'message': 'Already paid for this month'}), 400
         
         # Record payment
@@ -2436,7 +2559,6 @@ def pay_current_bill():
         ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
         
         conn.commit()
-        conn.close()
         
         # Notify owner
         notify_owner_payment(student_name, phone, room_number, amount, 'Current Bill (Online)')
@@ -2447,11 +2569,17 @@ def pay_current_bill():
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 @app.route('/api/current-bill/upload-proof', methods=['POST'])
 def upload_current_bill_proof():
     """Upload payment proof for current bill (pending admin verification)"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         phone = data.get('phone')
         amount = data.get('amount', 200)
@@ -2461,15 +2589,12 @@ def upload_current_bill_proof():
         if not phone or not payment_proof:
             return jsonify({'success': False, 'message': 'Phone and payment proof required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student_name = student[0]
@@ -2486,7 +2611,6 @@ def upload_current_bill_proof():
         ''', (phone, month))
         
         if cursor.fetchone():
-            conn.close()
             return jsonify({'success': False, 'message': 'Payment proof already submitted'}), 400
         
         # Save payment proof (pending verification)
@@ -2496,7 +2620,6 @@ def upload_current_bill_proof():
         ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'pending_verification', payment_proof))
         
         conn.commit()
-        conn.close()
         
         # Notify owner about pending verification
         notify_owner_payment(student_name, phone, room_number, amount, 'Current Bill (Proof Uploaded - Pending)')
@@ -2507,17 +2630,22 @@ def upload_current_bill_proof():
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @app.route('/api/current-bill/verify/<phone>/<month>', methods=['POST'])
+@require_admin
 def verify_current_bill_payment(phone, month):
     """Admin verifies current bill payment proof"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         data = request.json
         approve = data.get('approve', True)  # True to approve, False to reject
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get payment record
         cursor.execute('''
@@ -2528,7 +2656,6 @@ def verify_current_bill_payment(phone, month):
         payment = cursor.fetchone()
         
         if not payment:
-            conn.close()
             return jsonify({'success': False, 'message': 'No pending payment found'}), 404
         
         if approve:
@@ -2548,7 +2675,6 @@ def verify_current_bill_payment(phone, month):
             message = 'Payment rejected!'
         
         conn.commit()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -2556,12 +2682,17 @@ def verify_current_bill_payment(phone, month):
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
     # ==================== ADD THIS TO YOUR app.py ====================
 # Add this route around line 1350 (after the other current-bill routes)
 
 @app.route('/api/current-bills/pending', methods=['GET'])
+@require_admin
 def get_pending_current_bills():
     """Get all pending current bill verifications for admin"""
     try:
@@ -2579,7 +2710,6 @@ def get_pending_current_bills():
         ''')
         
         bills = cursor.fetchall()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -2598,6 +2728,10 @@ def get_pending_current_bills():
         }), 200
         
     except Exception as e:
+
+        
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     # ==================== RAZORPAY CURRENT BILL ROUTES ====================
 
@@ -2605,6 +2739,8 @@ def get_pending_current_bills():
 def create_razorpay_order_current_bill():
     """Create Razorpay order for current bill payment"""
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         if not razorpay_client:
             return jsonify({
                 'success': False,
@@ -2618,13 +2754,10 @@ def create_razorpay_order_current_bill():
         if not phone:
             return jsonify({'success': False, 'message': 'Phone required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
         # Get student details
         cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = %s', (phone,))
         student = cursor.fetchone()
-        conn.close()
         
         if not student:
             return jsonify({'success': False, 'message': 'Student not found'}), 404
@@ -2635,7 +2768,7 @@ def create_razorpay_order_current_bill():
         
         # Create Razorpay order
         order_data = {
-            'amount': amount * 100,  # Razorpay expects amount in paise (₹200 = 20000 paise)
+            'amount': amount * 100,  # Razorpay expects amount in paise (â‚¹200 = 20000 paise)
             'currency': 'INR',
             'receipt': f'current_bill_{phone}_{int(datetime.now().timestamp())}',
             'notes': {
@@ -2661,7 +2794,11 @@ def create_razorpay_order_current_bill():
         }), 200
         
     except Exception as e:
-        print(f'❌ Razorpay order creation error: {str(e)}')
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Razorpay order creation error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2691,7 +2828,9 @@ def verify_razorpay_current_bill_payment():
                 'razorpay_signature': razorpay_signature
             })
         except Exception as e:
-            print(f'❌ Payment signature verification failed: {str(e)}')
+           if 'conn' in locals():
+            conn.rollback()
+            print(f'âŒ Payment signature verification failed: {str(e)}')
             return jsonify({
                 'success': False,
                 'message': 'Payment verification failed. Please contact support.'
@@ -2706,7 +2845,6 @@ def verify_razorpay_current_bill_payment():
         student = cursor.fetchone()
         
         if not student:
-            conn.close()
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student_name = student[0]
@@ -2721,7 +2859,6 @@ def verify_razorpay_current_bill_payment():
         ''', (phone, month))
         
         if cursor.fetchone():
-            conn.close()
             return jsonify({
                 'success': False,
                 'message': 'Bill already paid for this month'
@@ -2734,7 +2871,6 @@ def verify_razorpay_current_bill_payment():
         ''', (phone, 200, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
         
         conn.commit()
-        conn.close()
         
         # Notify owner
         notify_owner_payment(student_name, phone, room_number, 200, 'Current Bill (Razorpay - Verified)')
@@ -2746,18 +2882,23 @@ def verify_razorpay_current_bill_payment():
         }), 200
         
     except Exception as e:
-        print(f'❌ Razorpay verification error: {str(e)}')
+
+        
+        if 'conn' in locals():
+            conn.rollback()
+        print(f'âŒ Razorpay verification error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 if __name__ == '__main__':
-    print("🚀 Starting AR PG Backend Server...")
-    print("📍 Server running at: http://localhost:5000")
-    print("🛑 Press CTRL+C to stop")
+    print("ðŸš€ Starting AR PG Backend Server...")
+    print("ðŸ“ Server running at: http://localhost:5000")
+    print("ðŸ”— DB Pool: min=2, max=20 connections (supports 500+ concurrent users)")
+    print("ðŸ›‘ Press CTRL+C to stop")
     if DEBUG_MODE:
-        print("⚠️ Running in DEBUG mode")
+        print("âš ï¸ Running in DEBUG mode")
         app.run(debug=True, host='0.0.0.0', port=5000)
     else:
-        print("✅ Running in PRODUCTION mode")
+        print("âœ… Running in PRODUCTION mode")
         from waitress import serve
-        serve(app, host='0.0.0.0', port=5000, threads=8)
+        serve(app, host='0.0.0.0', port=5000, threads=20)

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Announcement - Test Page</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      font-family: 'Poppins', sans-serif;
+      transition: border-color 0.3s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 44px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      display: none;
+    }
+
+    .alert.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #10b981;
+    }
+
+    .alert.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #ef4444;
+    }
+
+    .alert.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .announcements-list {
+      margin-top: 40px;
+      padding-top: 40px;
+      border-top: 2px solid #e0e0e0;
+    }
+
+    .announcement-item {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .announcement-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .announcement-title {
+      font-weight: 700;
+      color: #333;
+      font-size: 1.1rem;
+    }
+
+    .announcement-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .announcement-message {
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .announcement-meta {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .delete-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 10px;
+      min-height: 44px;
+    }
+
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+    @media (max-width: 480px) {
+    .container {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .announcement-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .delete-btn {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+}
+  </style>
+</head>
+
+<body>
+ 
+
+  <div class="container">
+    <h1>📢 Create Announcement</h1>
+    <p class="subtitle">Send announcements to all students</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="announcementForm">
+      <div class="form-group">
+        <label for="title">Title *</label>
+        <input type="text" id="title" required placeholder="e.g., Maintenance Notice">
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message *</label>
+        <textarea id="message" required placeholder="Enter your announcement message here..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="type">Type</label>
+        <select id="type">
+          <option value="notice">Notice</option>
+          <option value="warning">Warning</option>
+          <option value="urgent">Urgent</option>
+          <option value="reminder">Reminder</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="priority">Priority</label>
+        <select id="priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="sendEmail" checked>
+        <label for="sendEmail" style="margin-bottom: 0;">Send Email to all students</label>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        📤 Send Announcement
+      </button>
+    </form>
+
+    <div class="announcements-list">
+      <h2 style="margin-bottom: 20px;">Recent Announcements</h2>
+      <div id="announcementsList">
+        <p style="color: #999;">Loading announcements...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+   // ✅ Environment-aware backend URL
+const BACKEND_URL = (() => {
+    const hostname = window.location.hostname;
+    
+    // Local development (works with mobile testing)
+    if (hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.endsWith('.local')) {
+        return `http://${hostname}:5000/api`;
+    }
+    
+    // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
+    // Option 1: If frontend and backend are on SAME domain
+    return `${window.location.protocol}//${hostname}/api`;
+    
+    // Option 2: If backend is on a different domain (e.g., Render.com)
+    // return 'https://arpg-backend.onrender.com/api';
+})();
+
+console.log('✅ Using BACKEND_URL:', BACKEND_URL);
+
+// ✅ SIMPLIFIED ADMIN AUTH CHECK (WORKS WITH BASE64 TOKENS)
+(function checkAdminAuth() {
+    const adminToken = localStorage.getItem('adminToken');
+    const adminEmail = localStorage.getItem('adminEmail');
+    
+    console.log('🔍 Admin Auth Check');
+    console.log('Token exists:', !!adminToken);
+    console.log('Email exists:', !!adminEmail);
+    
+    // Basic check: token and email must exist
+    if (!adminToken || !adminEmail) {
+        console.error('❌ No admin credentials found');
+        alert('⚠️ Admin access only! Please login as admin first.');
+        window.location.href = 'auth.html#admin';
+        return;
+    }
+    
+    // Try to verify token expiry (works with base64 tokens)
+    try {
+        // Decode base64 token
+        const tokenData = JSON.parse(atob(adminToken));
+        
+        console.log('📋 Token data:', tokenData);
+        
+        // Check if token expired
+        if (tokenData.exp && tokenData.exp < Date.now() / 1000) {
+            console.error('❌ Token expired');
+            alert('⚠️ Your session has expired. Please login again.');
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminEmail');
+            window.location.href = 'auth.html#admin';
+            return;
+        }
+        
+        console.log('✅ Admin authenticated:', adminEmail);
+    } catch (error) {
+        console.error('⚠️ Could not parse token:', error);
+        // If token format is different, just trust localStorage
+        console.log('✅ Admin access granted (basic check)');
+    }
+})();
+
+    // ✅ Force HTTPS in production
+if (typeof window !== 'undefined') {
+    const hostname = location.hostname;
+    const isLocalNetwork = 
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.endsWith('.local');
+
+    if (location.protocol !== 'https:' && !isLocalNetwork) {
+        location.replace(`https:${location.href.substring(location.protocol.length)}`);
+    }
+}
+
+    // Show alert message
+    function showAlert(message, type = 'success') {
+      const alertBox = document.getElementById('alertBox');
+      alertBox.textContent = message;
+      alertBox.className = `alert ${type} show`;
+
+      setTimeout(() => {
+        alertBox.classList.remove('show');
+      }, 5000);
+    }
+    // ✅ XSS Protection Function
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    // ✅ Timeout Protection Function
+async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - please check your connection');
+        }
+        throw error;
+    }
+}
+
+    // Create announcement
+    document.getElementById('announcementForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // ✅ Validate inputs
+    const title = document.getElementById('title').value.trim();
+    const message = document.getElementById('message').value.trim();
+    
+    if (!title || title.length < 3) {
+        showAlert('Title must be at least 3 characters long', 'error');
+        return;
+    }
+    
+    if (!message || message.length < 10) {
+        showAlert('Message must be at least 10 characters long', 'error');
+        return;
+    }
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Sending...';
+    
+    const formData = {
+        title: title,
+        message: message,
+        type: document.getElementById('type').value,
+        priority: document.getElementById('priority').value,
+        sendEmail: document.getElementById('sendEmail').checked,
+        sendToAll: true
+    };
+    
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/announcements', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            document.getElementById('announcementForm').reset();
+            loadAnnouncements();
+        } else {
+            showAlert('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        if (error.message.includes('timeout')) {
+            showAlert('⚠️ Request timeout. Please try again.', 'error');
+        } else {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '📤 Send Announcement';
+    }
+});
+
+    // Load announcements
+    async function loadAnnouncements() {
+      const listContainer = document.getElementById('announcementsList');
+
+      try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/announcements');
+        const data = await response.json();
+
+        if (data.success && data.announcements.length > 0) {
+          listContainer.innerHTML = '';
+
+          data.announcements.forEach(announcement => {
+            const item = document.createElement('div');
+            item.className = 'announcement-item';
+
+            const badgeClass = announcement.priority === 'high' ? 'badge-high' :
+              announcement.priority === 'medium' ? 'badge-medium' : 'badge-low';
+            item.innerHTML = `
+  <div class="announcement-header">
+    <div class="announcement-title">${escapeHtml(announcement.title)}</div>
+    <div>
+      <span class="announcement-badge ${badgeClass}">${escapeHtml(announcement.priority)}</span>
+      <button class="delete-btn" onclick="deleteAnnouncement(${announcement.id})">🗑️ Delete</button>
+    </div>
+  </div>
+  <div class="announcement-message">${escapeHtml(announcement.message)}</div>
+  <div class="announcement-meta">
+    Type: ${escapeHtml(announcement.type)} | Created: ${new Date(announcement.createdAt).toLocaleString()}
+  </div>
+`;
+
+            listContainer.appendChild(item);
+          });
+        } else {
+          listContainer.innerHTML = '<p style="color: #999;">No announcements yet. Create your first one above!</p>';
+        }
+      } catch (error) {
+        listContainer.innerHTML = '<p style="color: #ef4444;">Error loading announcements: ' + error.message + '</p>';
+      }
+    }
+
+    // Delete announcement
+    async function deleteAnnouncement(id) {
+      if (!confirm('Are you sure you want to delete this announcement?')) {
+        return;
+      }
+
+      try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/announcements/' + id, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showAlert('Announcement deleted successfully!', 'success');
+          loadAnnouncements();
+        } else {
+          showAlert('Error: ' + data.message, 'error');
+        }
+      } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+      }
+    }
+
+    // Load announcements on page load
+    loadAnnouncements();
+  </script>
+</body>
+
+</html>
