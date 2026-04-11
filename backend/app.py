@@ -1,4 +1,4 @@
-﻿
+
 
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
@@ -97,26 +97,58 @@ JWT_SECRET = os.getenv('JWT_SECRET')
 FLASK_ENV = os.getenv('FLASK_ENV', 'development')
 DEBUG_MODE = FLASK_ENV == 'development'
 if not ADMIN_EMAIL or not ADMIN_PASSWORD or not JWT_SECRET:
-    raise ValueError("âŒ CRITICAL: ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET must be set in .env file!")
+    raise ValueError("❌ CRITICAL: ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET must be set in .env file!")
 
 
 # ==================== DATABASE CONNECTION POOL ====================
-# Shared pool: min 2 idle connections, max 20 simultaneous connections.
-# This allows ~500+ concurrent users instead of crashing at ~80.
-DB_POOL = psycopg2_pool.ThreadedConnectionPool(
-    minconn=2,
-    maxconn=50,
-    host=os.getenv('DB_HOST', 'localhost'),
-    database=os.getenv('DB_NAME', 'pg_system'),
-    user=os.getenv('DB_USER', 'postgres'),
-    password=os.getenv('DB_PASSWORD')
-)
-print("âœ… Database connection pool initialized (min=2, max=50)")
+# Supports both DATABASE_URL (Render) and individual env vars (local dev)
+DB_POOL = None
+
+def init_db_pool():
+    """Initialize the database connection pool (lazy init)."""
+    global DB_POOL
+    if DB_POOL is not None:
+        return DB_POOL
+
+    database_url = os.getenv('DATABASE_URL')
+
+    try:
+        if database_url:
+            # Render provides a postgres:// URL — psycopg2 needs postgresql://
+            if database_url.startswith('postgres://'):
+                database_url = database_url.replace('postgres://', 'postgresql://', 1)
+            DB_POOL = psycopg2_pool.ThreadedConnectionPool(
+                minconn=2,
+                maxconn=50,
+                dsn=database_url,
+                sslmode='require'
+            )
+            print("✅ Database pool initialized using DATABASE_URL")
+        else:
+            # Local development fallback
+            DB_POOL = psycopg2_pool.ThreadedConnectionPool(
+                minconn=2,
+                maxconn=50,
+                host=os.getenv('DB_HOST', 'localhost'),
+                database=os.getenv('DB_NAME', 'pg_system'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD')
+            )
+            print("✅ Database pool initialized using individual DB env vars")
+    except Exception as e:
+        print(f"❌ Database pool init failed: {e}")
+        DB_POOL = None
+        raise
+
+    return DB_POOL
+
 EXECUTOR = ThreadPoolExecutor(max_workers=30)
 def get_db_connection():
     """Borrow a connection from the pool (stored on Flask's 'g' per request)."""
     if 'db_conn' not in g:
-        g.db_conn = DB_POOL.getconn()
+        # Ensure pool is initialized
+        pool = init_db_pool()
+        g.db_conn = pool.getconn()
     return g.db_conn
 
 @app.teardown_appcontext
