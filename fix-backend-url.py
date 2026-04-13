@@ -24,7 +24,7 @@ NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
         hostname.startsWith('192.168.') ||
         hostname.startsWith('10.') ||
         hostname.endsWith('.local')) {
-        return `http://${hostname}:5000/api`;
+        return `https://pg-website2.onrender.com/api`;
     }
     
     // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
