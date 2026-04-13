@@ -1408,12 +1408,8 @@
         return `http://${hostname}:5000/api`;
     }
     
-    // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
-    // Option 1: If frontend and backend are on SAME domain
-    return `${window.location.protocol}//${hostname}/api`;
-    
     // Option 2: If backend is on a different domain (e.g., Render.com)
-    // return 'https://arpg-backend.onrender.com/api';
+     return 'https://pg-website2.onrender.com/api';
 })();
 
 console.log('✅ Using BACKEND_URL:', BACKEND_URL);
@@ -1421,7 +1417,7 @@ let CONFIG = {};
 
 async function loadConfig() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/config`);
+    const res = await fetch(`${BACKEND_URL}/config`);
     CONFIG = await res.json();
 
     console.log("✅ Config Loaded:", CONFIG);

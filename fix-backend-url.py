@@ -27,12 +27,8 @@ NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
         return `https://pg-website2.onrender.com/api`;
     }
     
-    // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
-    // Option 1: If frontend and backend are on SAME domain
-    return `${window.location.protocol}//${hostname}/api`;
-    
     // Option 2: If backend is on a different domain (uncomment below)
-    // return 'https://arpg-backend.onrender.com/api';
+     return 'https://pg-website2.onrender.com/api';;
 })();
 
 console.log('✅ Using BACKEND_URL:', BACKEND_URL);'''
@@ -105,7 +101,7 @@ def main():
     print()
     
     # Change to PG directory
-    pg_dir = r'd:\PG'
+    pg_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
     
     if not os.path.exists(pg_dir):
         print(f'❌ Directory not found: {pg_dir}')
@@ -139,10 +135,10 @@ def main():
         print('✅ BACKEND_URL has been updated in all files!')
         print()
         print('⚠️  IMPORTANT: After deployment, update this line in all files:')
-        print('   return `${window.location.protocol}//${hostname}/api`;')
+        print("     return 'https://pg-website2.onrender.com/api;'")
         print()
         print('   Replace with your actual backend URL if different domain:')
-        print('   return \'https://arpg-backend.onrender.com/api\';')
+        print('    return https://pg-website2.onrender.com/api;')
     else:
         print('⚠️  No files were fixed. Please check manually.')
     

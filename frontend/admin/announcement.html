@@ -318,12 +318,10 @@ const BACKEND_URL = (() => {
         return `http://${hostname}:5000/api`;
     }
     
-    // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
-    // Option 1: If frontend and backend are on SAME domain
-    return `${window.location.protocol}//${hostname}/api`;
+
     
     // Option 2: If backend is on a different domain (e.g., Render.com)
-    // return 'https://arpg-backend.onrender.com/api';
+     return 'https://pg-website2.onrender.com/api';
 })();
 
 console.log('✅ Using BACKEND_URL:', BACKEND_URL);
