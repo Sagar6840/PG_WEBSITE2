@@ -81,7 +81,7 @@ except ImportError:
     print("âš ï¸ Twilio not installed. SMS features will be disabled.")
 
 # CORS origins from env
-ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000').split(',')
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000','https://pg-website2.onrender.com/api/auth.html').split(',')
 
 CORS(app, resources={
     r"/api/*": {

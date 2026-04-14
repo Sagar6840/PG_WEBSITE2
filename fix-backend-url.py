@@ -15,7 +15,31 @@ FILES_TO_FIX = [
 ]
 
 # The new smart BACKEND_URL code
+# NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
+#     const hostname = window.location.hostname;
+    
+#     // Local development (works with mobile testing)
+#     if (hostname === 'localhost' || 
+#         hostname === '127.0.0.1' || 
+#         hostname.startsWith('192.168.') ||
+#         hostname.startsWith('10.') ||
+#         hostname.endsWith('.local')) {
+#         return `https://pg-website2.onrender.com/api`;
+#     }
+    
+#     // Production - REPLACE WITH YOUR ACTUAL DOMAIN!
+#     // Option 1: If frontend and backend are on SAME domain
+#     return `${window.location.protocol}//${hostname}/api`;
+    
+#     // Option 2: If backend is on a different domain (uncomment below)
+#     // return 'https://arpg-backend.onrender.com/api';
+# })();
+
+# console.log('✅ Using BACKEND_URL:', BACKEND_URL);'''
 NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
+
+    return 'https://pg-website2.onrender.com/api';
+=======
     const hostname = window.location.hostname;
     
     // Local development (works with mobile testing)
@@ -30,8 +54,25 @@ NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
     // Option 2: If backend is on a different domain (uncomment below)
      return 'https://pg-website2.onrender.com/api';;
 })();
+'''
 
-console.log('✅ Using BACKEND_URL:', BACKEND_URL);'''
+from flask import request
+
+def get_backend_url():
+    hostname = request.host.split(':')[0]  # remove port if present
+
+    # Local development
+    if (
+        hostname == 'localhost' or
+        hostname == '127.0.0.1' or
+        hostname.startswith('192.168.') or
+        hostname.startswith('10.') or
+        hostname.endswith('.local')
+    ):
+        return "https://pg-website2.onrender.com/api"
+
+    # Production
+    return "https://pg-website2.onrender.com/api"
 
 # Patterns to match the old BACKEND_URL
 PATTERNS = [
@@ -135,6 +176,11 @@ def main():
         print('✅ BACKEND_URL has been updated in all files!')
         print()
         print('⚠️  IMPORTANT: After deployment, update this line in all files:')
+        print('   return `https://pg-website2.onrender.com/api`;')
+        print()
+        print('   Replace with your actual backend URL if different domain:')
+        print('   return \'https://pg-website2.onrender.com/api\';')
+=======
         print("     return 'https://pg-website2.onrender.com/api;'")
         print()
         print('   Replace with your actual backend URL if different domain:')
