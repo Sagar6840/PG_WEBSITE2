@@ -38,8 +38,9 @@ FILES_TO_FIX = [
 # console.log('✅ Using BACKEND_URL:', BACKEND_URL);'''
 NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
 
-    return 'https://pg-website2.onrender.com/api';
-=======
+    
+    return 'https://api.myarpg.in/api/test';   
+
     const hostname = window.location.hostname;
     
     // Local development (works with mobile testing)
@@ -48,11 +49,11 @@ NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
         hostname.startsWith('192.168.') ||
         hostname.startsWith('10.') ||
         hostname.endsWith('.local')) {
-        return `https://pg-website2.onrender.com/api`;
+        return `https://api.myarpg.in/api/test`;
     }
     
     // Option 2: If backend is on a different domain (uncomment below)
-     return 'https://pg-website2.onrender.com/api';;
+     return 'https://api.myarpg.in/api/test';;
 })();
 '''
 
@@ -69,10 +70,10 @@ def get_backend_url():
         hostname.startswith('10.') or
         hostname.endswith('.local')
     ):
-        return "https://pg-website2.onrender.com/api"
+        return "https://api.myarpg.in/api/test"
 
     # Production
-    return "https://pg-website2.onrender.com/api"
+    return "https://api.myarpg.in/api/test"
 
 # Patterns to match the old BACKEND_URL
 PATTERNS = [
