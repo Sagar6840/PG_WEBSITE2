@@ -180,7 +180,7 @@ def main():
         print()
         print('   Replace with your actual backend URL if different domain:')
         print('   return \'https://pg-website2.onrender.com/api\';')
-=======
+
         print("     return 'https://pg-website2.onrender.com/api;'")
         print()
         print('   Replace with your actual backend URL if different domain:')
