@@ -1,4 +1,4 @@
-
+﻿
 
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
@@ -83,7 +83,7 @@ except ImportError:
 # CORS origins — reads from ALLOWED_ORIGINS env var, falls back to safe defaults
 _raw_origins = os.getenv(
     'ALLOWED_ORIGINS',
-    'https://myarpg.in,https://www.myarpg.in,http://localhost:5000,http://127.0.0.1:5000'
+    'https://myarpg.in,https://www.myarpg.in,http://localhost:5000,http://127.0.0.1:5000,https://pg-website2.onrender.com'
 )
 ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(',') if o.strip()]
 print(f"✅ CORS allowed origins: {ALLOWED_ORIGINS}")
