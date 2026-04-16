@@ -1,4 +1,4 @@
-﻿
+
 
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
@@ -78,16 +78,22 @@ try:
     TWILIO_AVAILABLE = True
 except ImportError:
     TWILIO_AVAILABLE = False
-    print("âš ï¸ Twilio not installed. SMS features will be disabled.")
+    print("⚠️ Twilio not installed. SMS features will be disabled.")
 
-# CORS origins from env
-ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000').split(',')
+# CORS origins — reads from ALLOWED_ORIGINS env var, falls back to safe defaults
+_raw_origins = os.getenv(
+    'ALLOWED_ORIGINS',
+    'https://myarpg.in,https://www.myarpg.in,http://localhost:5000,http://127.0.0.1:5000'
+)
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(',') if o.strip()]
+print(f"✅ CORS allowed origins: {ALLOWED_ORIGINS}")
 
 CORS(app, resources={
     r"/api/*": {
-        "origins": ALLOWED_ORIGINS,  # âœ… Now reads from .env!
+        "origins": ALLOWED_ORIGINS,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": False
     }
 })
 
@@ -429,15 +435,18 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
         print(f"â Œ Error notifying owner: {str(e)}")
         return False
 
-# @app.before_request
-# def handle_preflight():
-#     """Handle CORS preflight requests"""
-#     if request.method == "OPTIONS":
-#         response = jsonify({'status': 'ok'})
-#         response.headers['Access-Control-Allow-Origin'] = '*'
-#         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-#         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-#         return response, 200
+@app.before_request
+def handle_preflight():
+    """Handle CORS preflight requests explicitly so OPTIONS never gets blocked."""
+    if request.method == "OPTIONS":
+        origin = request.headers.get('Origin', '')
+        response = jsonify({'status': 'ok'})
+        if origin in ALLOWED_ORIGINS:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Max-Age'] = '3600'
+        return response, 200
 
 # def init_db():
 #     """Initialize database with tables"""
