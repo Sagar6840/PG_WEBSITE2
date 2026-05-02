@@ -401,7 +401,7 @@ if (typeof window !== 'undefined') {
       return div.innerHTML;
     }
     // ✅ Timeout Protection Function
-async function fetchWithTimeout(url, options = {}, timeout = 60000) {
+async function fetchWithTimeout(url, options = {}, timeout = 600000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
