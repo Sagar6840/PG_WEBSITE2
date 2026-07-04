@@ -2436,39 +2436,308 @@ async function viewAdminContract(phone) {
         }
 
         const c = data.contract;
+        const existingModal = document.getElementById('admin-contract-modal-overlay');
+        if (existingModal) existingModal.remove();
+
         const modal = document.createElement('div');
-        modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 16px;';
-        modal.innerHTML = `
-            <div style="background: white; width: min(900px, 96vw); max-height: 92vh; overflow: auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
-                <div style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                    <h3 style="margin:0; color:#111827;">Student Contract Details</h3>
-                    <button onclick="this.closest('div[style]').parentElement.parentElement.remove()" style="background:#ef4444; color:white; border:none; border-radius:8px; padding:8px 12px; cursor:pointer;">Close</button>
-                </div>
-                <div style="padding: 18px 20px; color:#1f2937; line-height:1.6;">
-                    <p><strong>Name:</strong> ${escapeHtml(c.student_name || 'N/A')}</p>
-                    <p><strong>Phone:</strong> ${escapeHtml(c.student_phone || 'N/A')}</p>
-                    <p><strong>Email:</strong> ${escapeHtml(c.student_email || 'N/A')}</p>
-                    <p><strong>Father Name:</strong> ${escapeHtml(c.father_name || 'N/A')}</p>
-                    <p><strong>Admission Date:</strong> ${escapeHtml(c.admission_date || 'N/A')}</p>
-                    <p><strong>Duration:</strong> ${escapeHtml(String(c.duration_months || 'N/A'))} months</p>
-                    <p><strong>Monthly Rent:</strong> Rs ${Number(c.monthly_rent || 0).toLocaleString('en-IN')}</p>
-                    <p><strong>Security Deposit:</strong> Rs ${Number(c.security_deposit || 0).toLocaleString('en-IN')}</p>
-                    <p><strong>Address:</strong> ${escapeHtml(c.home_address || 'N/A')}</p>
-                    <p><strong>Signed At:</strong> ${escapeHtml(c.signed_at_display || 'N/A')}</p>
-                    <div style="margin-top:16px;">
-                        <strong>Signature:</strong>
-                        <div style="margin-top:8px; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#f9fafb;">
-                            ${c.signature_data ? `<img src="${c.signature_data}" alt="Signature" style="max-width:100%; max-height:220px; object-fit:contain; display:block; margin:auto;"/>` : '<div style="color:#6b7280;">No signature found.</div>'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        modal.id = 'admin-contract-modal-overlay';
+        modal.style.cssText = 'position: fixed; inset: 0; background: rgba(15,23,42,0.68); display: flex; align-items: flex-start; justify-content: center; z-index: 10000; padding: 16px; overflow: auto;';
+        modal.innerHTML = buildAdminContractTemplate(c);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.remove();
+            }
+        });
         document.body.appendChild(modal);
     } catch (error) {
         console.error('Error viewing contract:', error);
         alert('Error loading contract: ' + (error.message || 'Unknown error'));
     }
+}
+
+function closeAdminContractModal() {
+    const modal = document.getElementById('admin-contract-modal-overlay');
+    if (modal) modal.remove();
+}
+
+function formatAdminContractDate(value, options = {}) {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return options.fallback || 'N/A';
+
+    if (options.mode === 'date-only') {
+        return date.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+    }
+
+    return date.toLocaleString('en-IN');
+}
+
+function addMonthsToDate(dateValue, months) {
+    const date = dateValue ? new Date(dateValue) : null;
+    if (!date || Number.isNaN(date.getTime())) return null;
+    const endDate = new Date(date);
+    endDate.setMonth(endDate.getMonth() + Number(months || 0));
+    return endDate;
+}
+
+function formatAdminCurrency(value) {
+    const amount = Number(value || 0);
+    return amount.toLocaleString('en-IN');
+}
+
+function buildAdminContractTemplate(c) {
+    const studentName = escapeHtml(c.student_name || 'N/A');
+    const fatherName = escapeHtml(c.father_name || 'N/A');
+    const phone = escapeHtml(c.student_phone || 'N/A');
+    const email = escapeHtml(c.student_email || 'N/A');
+    const admissionDateText = formatAdminContractDate(c.admission_date, { mode: 'date-only' });
+    const admissionDate = c.admission_date ? new Date(c.admission_date) : null;
+    const endDate = addMonthsToDate(c.admission_date, c.duration_months);
+    const durationText = endDate && admissionDate && !Number.isNaN(admissionDate.getTime())
+        ? `${escapeHtml(String(c.duration_months || 0))} months (till ${endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })})`
+        : `${escapeHtml(String(c.duration_months || 'N/A'))} months`;
+    const rentText = `${formatAdminCurrency(c.monthly_rent)} / month`;
+    const depositText = formatAdminCurrency(c.security_deposit);
+    const address = escapeHtml(c.home_address || 'N/A');
+    const generatedDate = c.signed_at
+        ? formatAdminContractDate(c.signed_at, { mode: 'date-only' })
+        : 'N/A';
+    const signedAt = formatAdminContractDate(c.signed_at);
+    const signatureMarkup = c.signature_data
+        ? `<img src="${c.signature_data}" alt="Signature" style="max-width:100%; max-height:100%; object-fit:contain; display:block; margin:0 auto;">`
+        : '<div style="color:#64748b; font-size:14px; padding: 18px 0; text-align:center;">No signature found.</div>';
+
+    return `
+        <style>
+            .admin-contract-shell {
+                width: min(980px, 100%);
+                margin: 0 auto;
+                background: #ffffff;
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
+            }
+            .admin-contract-toolbar {
+                display: flex;
+                justify-content: flex-end;
+                padding: 14px 14px 0;
+                background: transparent;
+            }
+            .admin-contract-close {
+                background: #ef4444;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 14px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .admin-contract-scroll {
+                max-height: 88vh;
+                overflow: auto;
+                padding: 0 14px 14px;
+            }
+            .admin-contract-page {
+                width: min(794px, 100%);
+                margin: 0 auto;
+                background: #fff;
+                color: #0f172a;
+                font-family: Arial, Helvetica, sans-serif;
+                box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+            }
+            .admin-contract-header {
+                background: #1f4d79;
+                color: #fff;
+                padding: 18px 22px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 18px;
+            }
+            .admin-contract-header h1 {
+                margin: 0;
+                font-size: 22px;
+                line-height: 1.1;
+            }
+            .admin-contract-header .sub {
+                margin-top: 4px;
+                font-size: 13px;
+                opacity: 0.95;
+            }
+            .admin-contract-owner {
+                text-align: right;
+                font-size: 11px;
+                line-height: 1.45;
+                padding-top: 2px;
+                white-space: nowrap;
+            }
+            .admin-contract-body {
+                padding: 18px 22px 14px;
+            }
+            .admin-contract-body h2 {
+                margin: 0 0 10px;
+                font-size: 20px;
+                line-height: 1.2;
+                color: #111827;
+            }
+            .admin-contract-meta {
+                font-size: 12px;
+                line-height: 1.7;
+                color: #111827;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .admin-contract-meta span {
+                display: block;
+            }
+            .admin-contract-section-title {
+                margin: 12px 0 6px;
+                font-size: 14px;
+                font-weight: 700;
+                color: #111827;
+            }
+            .admin-contract-grid {
+                display: grid;
+                grid-template-columns: 190px 1fr;
+                row-gap: 5px;
+                column-gap: 18px;
+                font-size: 12px;
+                margin-bottom: 12px;
+            }
+            .admin-contract-label {
+                font-weight: 700;
+                color: #111827;
+            }
+            .admin-contract-value {
+                color: #111827;
+            }
+            .admin-contract-terms {
+                margin: 0;
+                padding-left: 20px;
+                font-size: 11px;
+                line-height: 1.45;
+                color: #111827;
+            }
+            .admin-contract-terms li {
+                margin: 0 0 4px;
+            }
+            .admin-contract-signature-title {
+                margin: 12px 0 6px;
+                font-size: 14px;
+                font-weight: 700;
+                color: #111827;
+            }
+            .admin-contract-signature-box {
+                border: 1px solid #cbd5e1;
+                height: 92px;
+                padding: 8px 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                background: #fff;
+            }
+            .admin-contract-footer {
+                padding: 10px 22px 14px;
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                font-size: 10px;
+                color: #64748b;
+            }
+            @media (max-width: 760px) {
+                .admin-contract-header {
+                    flex-direction: column;
+                }
+                .admin-contract-owner {
+                    text-align: left;
+                    white-space: normal;
+                }
+                .admin-contract-grid {
+                    grid-template-columns: 1fr;
+                }
+                .admin-contract-footer {
+                    flex-direction: column;
+                }
+            }
+        </style>
+        <div class="admin-contract-shell" role="dialog" aria-modal="true" aria-labelledby="admin-contract-title">
+            <div class="admin-contract-toolbar">
+                <button type="button" class="admin-contract-close" onclick="closeAdminContractModal()">Close</button>
+            </div>
+            <div class="admin-contract-scroll">
+                <div class="admin-contract-page">
+                    <div class="admin-contract-header">
+                        <div>
+                            <h1>AR PG Accommodations</h1>
+                            <div class="sub">Signed Accommodation Agreement</div>
+                        </div>
+                        <div class="admin-contract-owner">
+                            <div>PG Owner: Ravi Shankar Gowda</div>
+                            <div>Email: ravishankargowda88@gmail.com</div>
+                            <div>Mob: +91-9738225350</div>
+                        </div>
+                    </div>
+                    <div class="admin-contract-body">
+                        <h2 id="admin-contract-title">PG Accommodation Agreement</h2>
+                        <div class="admin-contract-meta">
+                            <span>Contract ID: AR-2025-00142</span>
+                            <span>Generated: ${escapeHtml(generatedDate)}</span>
+                        </div>
+
+                        <div class="admin-contract-section-title">Student Details</div>
+                        <div class="admin-contract-grid">
+                            <div class="admin-contract-label">Full Name:</div><div class="admin-contract-value">${studentName}</div>
+                            <div class="admin-contract-label">Father's Name:</div><div class="admin-contract-value">${fatherName}</div>
+                            <div class="admin-contract-label">Phone:</div><div class="admin-contract-value">${phone}</div>
+                            <div class="admin-contract-label">Email:</div><div class="admin-contract-value">${email}</div>
+                            <div class="admin-contract-label">Admission Date:</div><div class="admin-contract-value">${escapeHtml(admissionDateText)}</div>
+                            <div class="admin-contract-label">Duration:</div><div class="admin-contract-value">${durationText}</div>
+                            <div class="admin-contract-label">Monthly Rent:</div><div class="admin-contract-value">${escapeHtml(rentText)}</div>
+                            <div class="admin-contract-label">Security Deposit:</div><div class="admin-contract-value">${escapeHtml(depositText)}</div>
+                            <div class="admin-contract-label">Home Address:</div><div class="admin-contract-value">${address}</div>
+                        </div>
+
+                        <div style="font-size:11px; line-height:1.45; color:#374151; margin: 8px 0 10px;">
+                            Please read all terms carefully. This is a legally binding agreement between you and AR PG Accommodations.
+                        </div>
+
+                        <div class="admin-contract-section-title">Terms &amp; Conditions</div>
+                        <ol class="admin-contract-terms">
+                            <li>Rent must be paid by the Mentioned Date of each month.</li>
+                            <li>The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.</li>
+                            <li>A minimum of 30 days written notice is required before vacating the premises.</li>
+                            <li>Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.</li>
+                            <li>The PG is responsible for keeping their room and shared spaces clean at 2-3 times per week.</li>
+                            <li>Any damage to the property must be reported immediately and will be charged to the responsible tenant.</li>
+                            <li>Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.</li>
+                            <li>Noise must be kept to a minimum after 10:00 PM to respect fellow residents.</li>
+                            <li>Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.</li>
+                        </ol>
+
+                        <div class="admin-contract-section-title">Included Services</div>
+                        <ol class="admin-contract-terms">
+                            <li>Wi-Fi internet access (up to 50 Mbps, shared)</li>
+                            <li>Daily housekeeping for common areas; weekly for rooms</li>
+                            <li>24/7 water supply and power backup (generator during outages)</li>
+                            <li>Two meals per day - breakfast &amp; dinner on weekdays</li>
+                            <li>Laundry facility access twice a week</li>
+                        </ol>
+
+                        <div class="admin-contract-signature-title">Signature</div>
+                        <div class="admin-contract-signature-box">${signatureMarkup}</div>
+                    </div>
+                    <div class="admin-contract-footer">
+                        <div>Signed at: ${escapeHtml(signedAt)}</div>
+                        <div>Generated electronically by AR PG Accommodations</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 async function loadAdminDocuments() {
