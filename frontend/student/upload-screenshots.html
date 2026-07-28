@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="royal">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload Payment Screenshots - AR PG</title>
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  
+  <!-- Google Fonts Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Sleek, simple, and premium light theme styles */
+    :root {
+      --primary: #4F46E5; /* Premium Indigo */
+      --secondary: #8B5CF6;
+      --accent: #0EA5E9;
+      --bg1: #EEF2F6;
+      --bg2: #E2E8F0;
+      --bg3: #FFFFFF;
+      --bg4: #F8FAFC;
+      --bg5: #F1F5F9;
+      
+      --text: #0F172A; /* Sleek Slate 900 (Black) */
+      --text-muted: #64748B; /* Slate 500 (Muted Black) */
+      --surface: #FFFFFF;
+      --surface-border: #E2E8F0;
+      --surface-focus: #F1F5F9;
+      
+      --shadow-1: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+      --ring: rgba(79, 70, 229, 0.12);
+      
+      --success: #10B981;
+      --success-bg: #DEF7EC;
+      --warn: #D97706;
+      --warn-bg: #FEF3C7;
+      --danger: #EF4444;
+      --danger-bg: #FDE8E8;
+      
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Keep theme primary/accent colors in sync if changed by dashboard */
+    html[data-theme="royal"] { --primary: #6366F1; --secondary: #8B5CF6; --accent: #22D3EE; }
+    html[data-theme="sunset"] { --primary: #FF6B9D; --secondary: #C44569; --accent: #FFA07A; }
+    html[data-theme="ocean"] { --primary: #0EA5E9; --secondary: #06B6D4; --accent: #14B8A6; }
+    html[data-theme="mint"] { --primary: #10B981; --secondary: #22C55E; --accent: #06B6D4; }
+    html[data-theme="amber"] { --primary: #F59E0B; --secondary: #F97316; --accent: #EF4444; }
+    html[data-theme="india"] { --primary: #FF9933; --secondary: #138808; --accent: #0F3D9D; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: #ffffff;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 20px 10px;
+    }
+
+    /* Soft, subtle light gradient in the background */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      filter: blur(100px) saturate(110%);
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .aurora::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(-45deg, var(--bg1), var(--bg2), var(--bg3), var(--bg4), var(--bg5));
+      background-size: 400% 400%;
+      animation: gradientShift 25s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 25px;
+      animation: fadeInDown 0.5s ease;
+    }
+
+    .page-title {
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: clamp(0.85rem, 1.8vw, 0.95rem);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    .form-card {
+      background: #ffffff;
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: var(--shadow-2);
+      margin-bottom: 35px;
+      animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-label i {
+      color: var(--primary);
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94A3B8;
+      transition: var(--transition);
+      font-size: 1rem;
+    }
+
+    .form-control {
+      width: 100%;
+      height: 46px;
+      padding: 10px 16px 10px 40px;
+      background: #F8FAFC;
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .form-control::placeholder {
+      color: #94A3B8;
+    }
+
+    .form-control:focus {
+      background: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    .form-control:focus + i {
+      color: var(--primary);
+    }
+
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+      cursor: pointer;
+    }
+
+    select.form-control option {
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-top: 5px;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      animation: slideInDown 0.2s ease forwards;
+    }
+
+    .form-group.invalid .form-control {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.08);
+    }
+
+    .form-group.invalid .error-msg {
+      display: flex;
+    }
+
+    .upload-zone {
+      border: 2px dashed #CBD5E1;
+      border-radius: 12px;
+      padding: 25px 20px;
+      text-align: center;
+      background: #F8FAFC;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--primary);
+      background: #F1F5F9;
+    }
+
+    .upload-zone.dragover {
+      transform: scale(1.005);
+    }
+
+    .upload-icon {
+      font-size: 2.2rem;
+      color: #94A3B8;
+      margin-bottom: 10px;
+      transition: var(--transition);
+    }
+
+    .upload-zone:hover .upload-icon, .upload-zone.dragover .upload-icon {
+      color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .upload-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .upload-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .file-preview-panel {
+      display: none;
+      width: 100%;
+      background: #F1F5F9;
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      position: relative;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .preview-thumbnail {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #E2E8F0;
+      border: 1px solid #CBD5E1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--text-muted);
+    }
+
+    .preview-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .preview-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 1px;
+    }
+
+    .preview-size {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .btn-remove-file {
+      background: none;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 6px;
+      border-radius: 50%;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-remove-file:hover {
+      background: rgba(239, 68, 68, 0.08);
+      color: var(--danger);
+    }
+
+    .progress-container {
+      display: none;
+      background: #F8FAFC;
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 15px;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .progress-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 6px;
+      background: #E2E8F0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 8px;
+      transition: width 0.1s ease;
+    }
+
+    .success-alert {
+      display: none;
+      background: var(--success-bg);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #065F46;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      align-items: center;
+      gap: 8px;
+      margin-top: 15px;
+      animation: bounceIn 0.4s ease;
+    }
+
+    .success-alert svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .btn-submit {
+      width: 100%;
+      height: 46px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+      transition: var(--transition);
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn-submit:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 750;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title i {
+      color: var(--primary);
+    }
+
+    .controls-bar {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 500px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94A3B8;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 8px 12px 8px 34px;
+      background: #FFFFFF;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+
+    .sort-box select {
+      height: 40px;
+      padding: 8px 32px 8px 12px;
+      background: #FFFFFF;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 14px;
+      transition: var(--transition);
+    }
+
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+      min-height: 150px;
+    }
+
+    .doc-card {
+      background: #FFFFFF;
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-1);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .doc-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-2);
+      border-color: #CBD5E1;
+    }
+
+    .doc-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--primary), var(--secondary));
+    }
+
+    .doc-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .doc-avatar-wrapper {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 1.15rem;
+      background: #E0F2FE;
+      color: #0EA5E9;
+      border: 1px solid var(--surface-border);
+      flex-shrink: 0;
+    }
+
+    .doc-card-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .doc-card-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .doc-card-type {
+      font-size: 0.72rem;
+      color: var(--primary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .doc-detail-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      padding: 5px 0;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .doc-detail-row:last-of-type {
+      border-bottom: none;
+      margin-bottom: 10px;
+    }
+
+    .doc-detail-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .doc-detail-value {
+      color: var(--text);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--warn-bg);
+      color: #B45309;
+      align-self: flex-start;
+      border: 1px solid rgba(245, 158, 11, 0.18);
+    }
+
+    .doc-card-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .btn-card {
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--surface-border);
+      color: var(--text);
+      background: #FFFFFF;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: var(--transition);
+    }
+
+    .btn-card:hover {
+      background: #F8FAFC;
+    }
+
+    .btn-card-view:hover {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.04);
+    }
+
+    .btn-card-download:hover {
+      color: var(--success);
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    .btn-card-delete:hover {
+      color: var(--danger);
+      border-color: var(--danger);
+      background: rgba(239, 68, 68, 0.04);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 45px 20px;
+      background: #F8FAFC;
+      border: 1px dashed #CBD5E1;
+      border-radius: 16px;
+      color: var(--text-muted);
+      width: 100%;
+      grid-column: 1 / -1;
+    }
+
+    .empty-icon {
+      font-size: 2.8rem;
+      margin-bottom: 12px;
+      opacity: 0.8;
+    }
+
+    .empty-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .empty-subtitle {
+      font-size: 0.8rem;
+    }
+
+    .preview-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      place-items: center;
+      z-index: 1000;
+      padding: 15px;
+    }
+
+    .preview-modal.show {
+      display: grid;
+    }
+
+    .modal-box {
+      width: min(800px, 92vw);
+      max-height: 80vh;
+      background: #FFFFFF;
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    .modal-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.4rem;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body {
+      flex: 1;
+      padding: 16px;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F8FAFC;
+    }
+
+    .modal-img {
+      max-width: 100%;
+      max-height: 55vh;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: var(--shadow-1);
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 300px;
+      width: 90%;
+    }
+
+    .toast {
+      background: #FFFFFF;
+      border-left: 4px solid var(--primary);
+      border-top: 1px solid var(--surface-border);
+      border-right: 1px solid var(--surface-border);
+      border-bottom: 1px solid var(--surface-border);
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .toast.success { border-left-color: var(--success); }
+    .toast.warn { border-left-color: var(--warn); }
+    .toast.danger { border-left-color: var(--danger); }
+
+    .toast-icon {
+      font-size: 1.05rem;
+    }
+    .toast.success .toast-icon { color: var(--success); }
+    .toast.warn .toast-icon { color: var(--warn); }
+    .toast.danger .toast-icon { color: var(--danger); }
+
+    .btn-back-dashboard {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+
+    .btn-back-dashboard:hover {
+      color: var(--primary);
+      transform: translateX(-3px);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 10px;
+      }
+      .form-card {
+        padding: 16px;
+        border-radius: 12px;
+      }
+      .docs-grid {
+        grid-template-columns: 1fr;
+      }
+      .controls-bar {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Animated Shifting Background -->
+  <div class="aurora" aria-hidden="true"></div>
+
+  <!-- Main Body Content Grid -->
+  <main class="container">
+    
+    <!-- Back to Dashboard Link -->
+    <a href="dashboard.html" class="btn-back-dashboard">
+      <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <!-- Title Section -->
+    <div class="page-header">
+      <h1 class="page-title">Upload Payment Screenshots</h1>
+      <p class="page-subtitle">
+        Please upload the payment screenshots for your monthly rent. Admin will verify it shortly.
+      </p>
+    </div>
+
+    <!-- Centered Form Card -->
+    <section class="form-card">
+      <form id="uploadForm" novalidate>
+        
+        <!-- Full Name -->
+        <div class="form-group" id="groupFullName">
+          <label class="form-label" for="fullName">
+            <i class="fas fa-user"></i> Full Name
+          </label>
+          <div class="input-wrapper">
+            <input type="text" id="fullName" class="form-control" placeholder="Enter your full name" required />
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="error-msg">
+            <i class="fas fa-exclamation-circle"></i> Name cannot be empty.
+          </div>
+        </div>
+
+        <!-- Payment Month -->
+        <div class="form-group" id="groupPaymentMonth">
+          <label class="form-label" for="paymentMonth">
+            <i class="fas fa-calendar-alt"></i> Payment Month
+          </label>
+          <div class="input-wrapper">
+            <select id="paymentMonth" class="form-control" required>
+              <option value="" disabled selected>Select Payment Month</option>
+              <option value="January">January</option>
+              <option value="February">February</option>
+              <option value="March">March</option>
+              <option value="April">April</option>
+              <option value="May">May</option>
+              <option value="June">June</option>
+              <option value="July">July</option>
+              <option value="August">August</option>
+              <option value="September">September</option>
+              <option value="October">October</option>
+              <option value="November">November</option>
+              <option value="December">December</option>
+            </select>
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="error-msg">
+            <i class="fas fa-exclamation-circle"></i> Payment Month must be selected.
+          </div>
+        </div>
+
+        <!-- Drag & Drop Upload Zone -->
+        <div class="form-group" id="groupFile">
+          <label class="form-label">
+            <i class="fas fa-cloud-upload-alt"></i> Upload Receipt Screenshot
+          </label>
+          
+          <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <span class="upload-text">Drag & drop your screenshot here or click to browse</span>
+            <span class="upload-hint">Supported formats: PNG, JPG, JPEG, WEBP (Max 10 MB)</span>
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg, image/webp" style="display:none;" />
+          </div>
+
+          <!-- Selected File Details / Preview Block -->
+          <div class="file-preview-panel" id="previewPanel">
+            <div class="preview-thumbnail" id="previewThumbnail">
+              <i class="fas fa-image"></i>
+            </div>
+            <div class="preview-details">
+              <div class="preview-name" id="previewName">filename.jpg</div>
+              <div class="preview-size" id="previewSize">1.2 MB</div>
+            </div>
+            <button type="button" class="btn-remove-file" id="btnRemoveFile" title="Remove File">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div class="error-msg" id="fileError">
+            <i class="fas fa-exclamation-circle"></i> File is required.
+          </div>
+        </div>
+
+        <!-- Upload Simulated Progress Area -->
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-meta">
+            <span class="progress-status" id="progressStatus">
+              <i class="fas fa-circle-notch fa-spin"></i> Uploading...
+            </span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressBarFill"></div>
+          </div>
+        </div>
+
+        <!-- Success Alert -->
+        <div class="success-alert" id="successAlert">
+          <svg viewBox="0 0 20 20">
+            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+          </svg>
+          ✓ Screenshot Uploaded Successfully
+        </div>
+
+        <!-- Submit Action Button -->
+        <button type="button" class="btn-submit" id="btnSubmit">
+          <i class="fas fa-upload"></i> Upload Screenshot
+        </button>
+
+      </form>
+    </section>
+
+    <!-- Uploaded Grid View -->
+    <section>
+      <div class="list-header">
+        <h2 class="section-title">
+          <i class="fas fa-history"></i> Uploaded Screenshots
+        </h2>
+        
+        <div class="controls-bar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by month..." />
+          </div>
+
+          <div class="sort-box">
+            <select id="sortSelect">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="docs-grid" id="docsGrid">
+        <!-- Generated Cards go here -->
+      </div>
+
+      <!-- Empty State View -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📸</div>
+        <div class="empty-title">No screenshots uploaded yet.</div>
+        <div class="empty-subtitle">Upload your monthly payment screenshot.</div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Preview Modal Box Overlay -->
+  <div class="preview-modal" id="previewModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">Screenshot Preview</span>
+        <button class="btn-close-modal" id="btnCloseModal" title="Close Preview">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Rendered preview content fits here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container System -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Script Logic -->
+  <script>
+    const BACKEND_URL = (() => {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.endsWith('.local')) {
+        return `http://${hostname}:5000/api`;
+      }
+      return 'https://pg-website2.onrender.com/api';
+    })();
+
+    const studentPhone = (localStorage.getItem('currentStudentPhone') || '').trim();
+    let isApiAvailable = false;
+    let screenshots = []; 
+
+    let selectedFile = null;
+    let selectedFileDataUrl = null;
+
+    // DOM selectors
+    const uploadForm = document.getElementById('uploadForm');
+    const fullNameInput = document.getElementById('fullName');
+    const paymentMonthSelect = document.getElementById('paymentMonth');
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const previewPanel = document.getElementById('previewPanel');
+    const previewThumbnail = document.getElementById('previewThumbnail');
+    const previewName = document.getElementById('previewName');
+    const previewSize = document.getElementById('previewSize');
+    const btnRemoveFile = document.getElementById('btnRemoveFile');
+    const btnSubmit = document.getElementById('btnSubmit');
+    
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressStatus = document.getElementById('progressStatus');
+    const successAlert = document.getElementById('successAlert');
+
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const docsGrid = document.getElementById('docsGrid');
+    const emptyState = document.getElementById('emptyState');
+    
+    const previewModal = document.getElementById('previewModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+
+    // Init Theme Syncing
+    (function initTheme() {
+      const theme = localStorage.getItem('arpg-theme') || 'royal';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    // Synchronize User profile
+    function loadUserProfile() {
+      const storedName = localStorage.getItem('currentStudentName') || '';
+      if (storedName && fullNameInput) fullNameInput.value = storedName;
+    }
+
+    async function checkApiConnection() {
+      if (!studentPhone || !/^\d{10}$/.test(studentPhone)) {
+        isApiAvailable = false;
+        return;
+      }
+      try {
+        const response = await fetch(`${BACKEND_URL}/student/${studentPhone}`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(4000)
+        });
+        if (response.ok) {
+          isApiAvailable = true;
+        }
+      } catch (err) {
+        isApiAvailable = false;
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let icon = 'fa-check-circle';
+      if (type === 'warn') icon = 'fa-exclamation-triangle';
+      if (type === 'danger') icon = 'fa-times-circle';
+      
+      toast.innerHTML = `
+        <i class="fas ${icon} toast-icon"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Drag-and-Drop Handlers
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      handleFileSelection(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFileSelection(e.target.files[0]);
+    });
+
+    btnRemoveFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearSelectedFile();
+    });
+
+    function handleFileSelection(file) {
+      if (!file) return;
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        showToast('Only JPG, JPEG, PNG, and WEBP image formats are allowed.', 'danger');
+        document.getElementById('fileError').style.display = 'flex';
+        document.getElementById('fileError').innerHTML = '<i class="fas fa-exclamation-circle"></i> Unsupported image format.';
+        return;
+      }
+
+      const maxSize = 10 * 1024 * 1024; 
+      if (file.size > maxSize) {
+        showToast('File size must not exceed 10 MB.', 'danger');
+        document.getElementById('fileError').style.display = 'flex';
+        document.getElementById('fileError').innerHTML = '<i class="fas fa-exclamation-circle"></i> File exceeds 10MB limit.';
+        return;
+      }
+
+      selectedFile = file;
+      document.getElementById('fileError').style.display = 'none';
+      
+      previewName.textContent = file.name;
+      previewSize.textContent = formatBytes(file.size);
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedFileDataUrl = e.target.result;
+        previewThumbnail.innerHTML = `<img src="${selectedFileDataUrl}" style="width:100%;height:100%;object-fit:cover;" />`;
+      };
+      reader.readAsDataURL(file);
+
+      dropZone.style.display = 'none';
+      previewPanel.style.display = 'flex';
+    }
+
+    function clearSelectedFile() {
+      selectedFile = null;
+      selectedFileDataUrl = null;
+      fileInput.value = '';
+      dropZone.style.display = 'flex';
+      previewPanel.style.display = 'none';
+      previewThumbnail.innerHTML = `<i class="fas fa-image"></i>`;
+    }
+
+    function validateForm() {
+      let isValid = true;
+
+      if (!fullNameInput.value.trim()) {
+        document.getElementById('groupFullName').classList.add('invalid');
+        isValid = false;
+      } else {
+        document.getElementById('groupFullName').classList.remove('invalid');
+      }
+
+      if (!paymentMonthSelect.value) {
+        document.getElementById('groupPaymentMonth').classList.add('invalid');
+        isValid = false;
+      } else {
+        document.getElementById('groupPaymentMonth').classList.remove('invalid');
+      }
+
+      if (!selectedFile) {
+        document.getElementById('fileError').style.display = 'flex';
+        document.getElementById('fileError').innerHTML = '<i class="fas fa-exclamation-circle"></i> Image file is required.';
+        isValid = false;
+      } else {
+        document.getElementById('fileError').style.display = 'none';
+      }
+
+      return isValid;
+    }
+
+    function resetForm() {
+      paymentMonthSelect.value = '';
+      clearSelectedFile();
+      document.getElementById('groupFullName').classList.remove('invalid');
+      document.getElementById('groupPaymentMonth').classList.remove('invalid');
+      document.getElementById('fileError').style.display = 'none';
+    }
+
+    btnSubmit.addEventListener('click', async () => {
+      if (!validateForm()) {
+        showToast('Please correct the validation errors first.', 'warn');
+        return;
+      }
+
+      if (!studentPhone) {
+        showToast('You must be logged in to upload screenshots.', 'danger');
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      fullNameInput.disabled = true;
+      paymentMonthSelect.disabled = true;
+      btnRemoveFile.style.display = 'none';
+      
+      progressContainer.style.display = 'block';
+      successAlert.style.display = 'none';
+      progressBarFill.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Uploading...';
+
+      const docName = `${paymentMonthSelect.value} Rent Screenshot`;
+      const docType = 'screenshot';
+
+      const animateProgress = () => new Promise(resolve => {
+        let progress = 0;
+        const timer = setInterval(() => {
+          progress += Math.floor(Math.random() * 15) + 5;
+          if (progress >= 100) {
+            progress = 100;
+            clearInterval(timer);
+            progressBarFill.style.width = '100%';
+            progressPercent.textContent = '100%';
+            resolve();
+            return;
+          }
+          progressBarFill.style.width = `${progress}%`;
+          progressPercent.textContent = `${progress}%`;
+        }, 50);
+      });
+
+      const doUpload = async () => {
+        try {
+          if (isApiAvailable) {
+            const res = await fetch(`${BACKEND_URL}/student/${studentPhone}/screenshots`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                doc_name: docName,
+                doc_data: selectedFileDataUrl
+              })
+            });
+            const data = await res.json();
+            return data.success;
+          }
+          return false;
+        } catch (err) {
+          console.error(err);
+          return false;
+        }
+      };
+
+      try {
+        const [, success] = await Promise.all([animateProgress(), doUpload()]);
+
+        if (success) {
+          progressStatus.innerHTML = `<i class="fas fa-check-circle" style="color:var(--success)"></i> Done!`;
+          setTimeout(() => {
+            progressContainer.style.display = 'none';
+            successAlert.style.display = 'flex';
+            showToast('Payment screenshot uploaded successfully!', 'success');
+            
+            btnSubmit.disabled = false;
+            fullNameInput.disabled = false;
+            paymentMonthSelect.disabled = false;
+            btnRemoveFile.style.display = 'flex';
+
+            resetForm();
+            loadScreenshotsList();
+            
+            setTimeout(() => {
+              successAlert.style.display = 'none';
+            }, 3000);
+          }, 800);
+        } else {
+          showToast('Failed to upload screenshot. Please try again.', 'danger');
+          btnSubmit.disabled = false;
+          fullNameInput.disabled = false;
+          paymentMonthSelect.disabled = false;
+          btnRemoveFile.style.display = 'flex';
+          progressContainer.style.display = 'none';
+        }
+      } catch (err) {
+        showToast('An error occurred during upload.', 'danger');
+        btnSubmit.disabled = false;
+        fullNameInput.disabled = false;
+        paymentMonthSelect.disabled = false;
+        btnRemoveFile.style.display = 'flex';
+        progressContainer.style.display = 'none';
+      }
+    });
+
+    async function viewDocument(id) {
+      const doc = screenshots.find(d => d.id === id);
+      if (!doc) return;
+
+      modalTitle.textContent = `${doc.doc_name}`;
+      modalBody.innerHTML = '<div style="color:var(--text)"><i class="fas fa-circle-notch fa-spin"></i> Loading Preview...</div>';
+      previewModal.classList.add('show');
+
+      try {
+        let base64Data = null;
+        if (isApiAvailable) {
+          const res = await fetch(`${BACKEND_URL}/student/${studentPhone}/documents/${id}/content`);
+          const data = await res.json();
+          if (data.success) base64Data = data.doc_data;
+        }
+
+        if (!base64Data) {
+          modalBody.innerHTML = '<div style="color:var(--danger)">Unable to retrieve preview.</div>';
+          return;
+        }
+
+        modalBody.innerHTML = `<img class="modal-img" src="${base64Data}" alt="Preview" />`;
+      } catch (err) {
+        modalBody.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`;
+      }
+    }
+
+    btnCloseModal.addEventListener('click', () => previewModal.classList.remove('show'));
+    previewModal.addEventListener('click', (e) => {
+      if (e.target === previewModal) previewModal.classList.remove('show');
+    });
+
+    async function downloadDocument(id) {
+      const doc = screenshots.find(d => d.id === id);
+      if (!doc) return;
+
+      try {
+        let base64Data = null;
+        if (isApiAvailable) {
+          const res = await fetch(`${BACKEND_URL}/student/${studentPhone}/documents/${id}/content`);
+          const data = await res.json();
+          if (data.success) base64Data = data.doc_data;
+        }
+
+        if (!base64Data) {
+          showToast('Could not retrieve file content.', 'danger');
+          return;
+        }
+
+        const link = document.createElement('a');
+        link.href = base64Data;
+        link.download = doc.file_name || `screenshot_${id}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Downloading screenshot...', 'success');
+      } catch (err) {
+        showToast('Download error occurred.', 'danger');
+      }
+    }
+
+    async function deleteDocument(id, cardEl) {
+      if (!confirm('Are you sure you want to delete this screenshot?')) return;
+
+      cardEl.style.opacity = '0.5';
+      try {
+        let success = false;
+        if (isApiAvailable) {
+          const res = await fetch(`${BACKEND_URL}/student/${studentPhone}/documents/${id}`, {
+            method: 'DELETE'
+          });
+          const data = await res.json();
+          success = data.success;
+        }
+
+        if (success) {
+          showToast('Screenshot deleted.', 'success');
+          loadScreenshotsList();
+        } else {
+          cardEl.style.opacity = '1';
+          showToast('Failed to delete screenshot.', 'danger');
+        }
+      } catch (err) {
+        cardEl.style.opacity = '1';
+        showToast('Error deleting screenshot.', 'danger');
+      }
+    }
+
+    async function loadScreenshotsList() {
+      try {
+        if (isApiAvailable) {
+          const res = await fetch(`${BACKEND_URL}/student/${studentPhone}/screenshots`);
+          const data = await res.json();
+          if (data.success) {
+            screenshots = data.screenshots || [];
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      renderList();
+    }
+
+    function renderList() {
+      const q = searchInput.value.toLowerCase().trim();
+      let filtered = screenshots.filter(d => d.doc_name.toLowerCase().includes(q));
+
+      const sortBy = sortSelect.value;
+      filtered.sort((a, b) => {
+        if (sortBy === 'newest') {
+          return new Date(b.uploaded_at || b.id) - new Date(a.uploaded_at || a.id);
+        } else if (sortBy === 'oldest') {
+          return new Date(a.uploaded_at || a.id) - new Date(b.uploaded_at || b.id);
+        }
+        return 0;
+      });
+
+      docsGrid.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      filtered.forEach(d => {
+        const dateStr = d.uploaded_at ? new Date(d.uploaded_at).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : 'N/A';
+
+        const card = document.createElement('div');
+        card.className = 'doc-card';
+        
+        card.innerHTML = `
+          <div class="doc-card-header">
+            <div class="doc-avatar-wrapper">
+              <i class="fas fa-file-image"></i>
+            </div>
+            <div class="doc-card-meta">
+              <div class="doc-card-name" title="${d.doc_name}">${d.doc_name}</div>
+              <div class="doc-card-type">Screenshot</div>
+            </div>
+          </div>
+          
+          <div class="doc-detail-row">
+            <span class="doc-detail-label">File name</span>
+            <span class="doc-detail-value" title="${d.file_name}">${d.file_name}</span>
+          </div>
+          <div class="doc-detail-row">
+            <span class="doc-detail-label">File size</span>
+            <span class="doc-detail-value">${formatBytes(d.file_size)}</span>
+          </div>
+          <div class="doc-detail-row">
+            <span class="doc-detail-label">Uploaded At</span>
+            <span class="doc-detail-value">${dateStr}</span>
+          </div>
+          <div class="doc-detail-row" style="margin-bottom:12px;">
+            <span class="doc-detail-label">Status</span>
+            <span class="status-badge"><i class="fas fa-clock"></i> ${d.status}</span>
+          </div>
+
+          <div class="doc-card-actions">
+            <button type="button" class="btn-card btn-card-view" onclick="viewDocument(${d.id})">
+              <i class="fas fa-eye"></i> View
+            </button>
+            <button type="button" class="btn-card btn-card-download" onclick="downloadDocument(${d.id})">
+              <i class="fas fa-download"></i> Get
+            </button>
+            <button type="button" class="btn-card btn-card-delete" onclick="deleteDocument(${d.id}, this.closest('.doc-card'))">
+              <i class="fas fa-trash-alt"></i> Del
+            </button>
+          </div>
+        `;
+        docsGrid.appendChild(card);
+      });
+    }
+
+    searchInput.addEventListener('input', renderList);
+    sortSelect.addEventListener('change', renderList);
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      loadUserProfile();
+      await checkApiConnection();
+      await loadScreenshotsList();
+    });
+  </script>
+</body>
+</html>

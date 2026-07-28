@@ -849,6 +849,7 @@ input::placeholder {
           <li><a href="#aria-chat" class="side-link nav-link" onclick="showSection('aria-chat', event)">🤖 Aria Assistant</a></li>
           <li><a href="#contract.html" class="side-link nav-link" onclick="showSection('contract',event)">📄 Contract Agreement</a></li>
           <li><a href="#upload-documents.html" class="side-link nav-link" onclick="showSection('uploadDocument',event)">📁 My Documents</a></li>
+          <li><a href="#upload-screenshots.html" class="side-link nav-link" onclick="showSection('uploadScreenshots',event)">📸 Upload Screenshots</a></li>
         </ul>
       </div>
     </aside>
@@ -1122,6 +1123,18 @@ input::placeholder {
           ></iframe>
         </div>
       </section>
+
+      <section id="uploadScreenshots" class="section">
+        <h1 class="page-title">Upload Payment Screenshots</h1>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <iframe
+            src="upload-screenshots.html"
+            title="Upload your payment screenshots here"
+            style="width:100%;min-height:1200px;border:0;display:block;background:#fff;"
+            loading="lazy"
+          ></iframe>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -1141,6 +1154,7 @@ input::placeholder {
         <div class="cmdp-item" data-go="aria-chat">🤖 Chat with Aria</div>
         <div class="cmdp-item" data-go="contract">📄 Go to Contract</div>
         <div class="cmdp-item" data-url="upload-documents.html">📁 Go to Documents</div>
+        <div class="cmdp-item" data-go="uploadScreenshots">📸 Go to Screenshots</div>
         <div class="cmdp-item" data-action="logout">🚪 Logout</div>
       </div>
     </div>

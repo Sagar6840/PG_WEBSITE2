@@ -1020,6 +1020,102 @@ def get_document_content(phone, doc_id):
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+@app.route('/api/student/<phone>/screenshots', methods=['POST'])
+def upload_student_screenshot(phone):
+    """Upload a payment screenshot for a student."""
+    try:
+        if not phone or not phone.isdigit() or len(phone) != 10:
+            return jsonify({'success': False, 'message': 'Invalid student phone number!'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify student exists
+        cursor.execute('SELECT phone FROM students WHERE phone = %s', (phone,))
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'message': 'Student not found!'}), 404
+            
+        data = request.get_json(silent=True) or {}
+        doc_name = (data.get('doc_name') or '').strip()
+        doc_data = data.get('doc_data') # base64 file data URL or string
+        
+        if not all([doc_name, doc_data]):
+            return jsonify({'success': False, 'message': 'Missing required document fields!'}), 400
+
+        # 10 MB upload limit
+        mime, ext, file_size = parse_data_url(doc_data)
+        max_size = 10 * 1024 * 1024
+        if file_size > max_size:
+            return jsonify({'success': False, 'message': 'File exceeds the 10 MB limit!'}), 400
+
+        file_name = build_document_file_name(doc_name, ext)
+
+        cursor.execute('''
+            INSERT INTO student_documents (student_phone, doc_name, doc_type, doc_data, file_name, file_size, uploaded_at, status)
+            VALUES (%s, %s, 'screenshot', %s, %s, %s, NOW(), 'pending')
+            RETURNING id
+        ''', (phone, doc_name, doc_data, file_name, file_size))
+
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Screenshot uploaded successfully!',
+            'document': {
+                'id': new_id,
+                'doc_name': doc_name,
+                'doc_type': 'screenshot',
+                'file_name': file_name,
+                'file_size': file_size,
+                'status': 'pending'
+            }
+        }), 201
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"❌ Error uploading screenshot: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/student/<phone>/screenshots', methods=['GET'])
+def get_student_screenshots(phone):
+    """Fetch all screenshots for a student."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, doc_name, doc_type, uploaded_at, status, file_name, file_size
+            FROM student_documents 
+            WHERE student_phone = %s AND doc_type = 'screenshot'
+            ORDER BY uploaded_at DESC
+        ''', (phone,))
+        
+        rows = cursor.fetchall()
+        documents = [
+            {
+                'id': row[0],
+                'doc_name': row[1],
+                'doc_type': row[2],
+                'uploaded_at': row[3].isoformat() if row[3] else None,
+                'uploaded_at_display': row[3].strftime('%d-%b-%Y %I:%M %p') if row[3] else 'N/A',
+                'status': row[4],
+                'file_name': row[5] or build_document_file_name(row[1], 'dat'),
+                'file_size': row[6] or 0
+            }
+            for row in rows
+        ]
+        
+        return jsonify({'success': True, 'screenshots': documents}), 200
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     return jsonify({
@@ -1447,6 +1543,75 @@ def get_admin_documents():
 
         return jsonify({'success': True, 'documents': documents}), 200
 
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/screenshots', methods=['GET'])
+@require_admin
+def get_admin_screenshots():
+    """Get all uploaded student screenshots for admin dashboard."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                d.id,
+                d.student_phone,
+                s.fullName,
+                s.email,
+                d.doc_name,
+                d.doc_type,
+                d.uploaded_at,
+                d.status,
+                d.file_name,
+                d.file_size
+            FROM student_documents d
+            LEFT JOIN students s ON s.phone = d.student_phone
+            WHERE d.doc_type = 'screenshot'
+            ORDER BY d.uploaded_at DESC NULLS LAST
+        ''')
+
+        rows = cursor.fetchall()
+        documents = [
+            {
+                'id': row[0],
+                'student_phone': row[1],
+                'student_name': row[2] or 'N/A',
+                'student_email': row[3] or 'N/A',
+                'doc_name': row[4],
+                'doc_type': row[5],
+                'uploaded_at': row[6].isoformat() if row[6] else None,
+                'uploaded_at_display': row[6].strftime('%d-%b-%Y %I:%M %p') if row[6] else 'N/A',
+                'status': row[7] or 'pending',
+                'file_name': row[8] or build_document_file_name(row[4], 'dat'),
+                'file_size': row[9] or 0
+            }
+            for row in rows
+        ]
+
+        return jsonify({'success': True, 'screenshots': documents}), 200
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/screenshots/<int:doc_id>', methods=['DELETE', 'OPTIONS'])
+@require_admin
+def delete_admin_screenshot(doc_id):
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM student_documents WHERE id = %s AND doc_type = \'screenshot\'', (doc_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Screenshot deleted successfully!'}), 200
     except Exception as e:
         if 'conn' in locals():
             conn.rollback()
@@ -2548,6 +2713,16 @@ def contract_page():
 @app.route('/student/upload-documents.html')
 def upload_documents_page():
     return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'upload-documents.html')
+
+
+@app.route('/student/upload-screenshots.html')
+def upload_screenshots_page():
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'upload-screenshots.html')
+
+
+@app.route('/admin/upload-screenshots.html')
+def admin_upload_screenshots_page():
+    return send_from_directory(os.path.join(PARENT_DIR, 'admin'), 'upload-screenshots.html')
 
 @app.route('/index.html')
 @app.route('/')

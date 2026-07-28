@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Screenshots Manager - AR PG Admin</title>
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Modern Color Palette matching admin.html */
+      --primary-color: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --secondary-color: #ec4899;
+      --accent-color: #14b8a6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+
+      /* Neutral Colors */
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-light: #94a3b8;
+      --border-color: #e2e8f0;
+
+      /* Shadows & Radius */
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      
+      --transition: all 0.25s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 30px 15px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Page Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .title-area h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .title-area p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-primary);
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border-radius: 6px;
+    }
+
+    /* Cards Grid */
+    .card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+      margin-bottom: 2rem;
+    }
+
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Search & Filter Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+
+    .search-input {
+      width: 100%;
+      height: 46px;
+      padding: 10px 16px 10px 42px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      outline: none;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .sort-box select {
+      height: 46px;
+      padding: 10px 36px 10px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") no-repeat right 14px center;
+      background-size: 16px;
+      transition: var(--transition);
+    }
+
+    .sort-box select:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* Table Design */
+    .table-container {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 800px;
+    }
+
+    th {
+      background: var(--bg-primary);
+      padding: 14px 18px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.82rem;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background: rgba(99, 102, 241, 0.02);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .thumbnail-wrapper {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .thumbnail-wrapper:hover {
+      transform: scale(1.08);
+      box-shadow: var(--shadow-md);
+    }
+
+    .thumbnail-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumbnail-wrapper i {
+      font-size: 1.5rem;
+      color: var(--text-light);
+    }
+
+    .student-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .student-name {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .student-phone {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-pending {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    /* Modal Overlay preview */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      place-items: center;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal.show {
+      display: grid;
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      width: min(800px, 92vw);
+      max-height: 85vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-weight: 700;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: var(--danger-color);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .close-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .modal-body {
+      padding: 20px;
+      background: var(--bg-primary);
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 300px;
+    }
+
+    .modal-img {
+      max-width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Empty state */
+    .empty-row {
+      text-align: center;
+      color: var(--text-light);
+      padding: 3rem !important;
+    }
+
+    .empty-row i {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      display: block;
+      color: var(--text-light);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Top Header -->
+    <div class="header">
+      <div class="title-area">
+        <h1>Payment Screenshots Manager</h1>
+        <p>View, verify and manage payment screenshots uploaded by students.</p>
+      </div>
+      <a href="admin.html" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      </a>
+    </div>
+
+    <!-- Main Card table -->
+    <div class="card">
+      <div class="card-title">
+        <span>Uploaded Screenshots</span>
+        <button class="btn btn-secondary btn-small" onclick="loadScreenshots()">
+          <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search by student name, phone or month..." onkeyup="filterScreenshots()" />
+        </div>
+        
+        <div class="sort-box">
+          <select id="sortSelect" onchange="filterScreenshots()">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table Wrapper -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Screenshot</th>
+              <th>Student Details</th>
+              <th>Document Name</th>
+              <th>File Name</th>
+              <th>Size</th>
+              <th>Uploaded Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="screenshotsTableBody">
+            <tr>
+              <td colspan="8" class="empty-row">
+                <i class="fas fa-circle-notch fa-spin"></i> Loading screenshots...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal Preview -->
+  <div class="modal" id="previewModal" onclick="closePreviewModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalTitle">Screenshot Preview</h3>
+        <button class="close-btn" onclick="closePreviewModal(event)">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = (() => {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.endsWith('.local')) {
+        return `http://${hostname}:5000/api`;
+      }
+      return 'https://pg-website2.onrender.com/api';
+    })();
+
+    let screenshotsList = [];
+
+    // Check auth
+    function checkAdminAuth() {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        alert('⚠️ Unauthorized access. Please log in first.');
+        window.location.href = '../auth.html';
+        return false;
+      }
+      return true;
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    async function loadScreenshots() {
+      const tbody = document.getElementById('screenshotsTableBody');
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-row"><i class="fas fa-circle-notch fa-spin"></i> Fetching screenshots...</td></tr>';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/admin/screenshots`, {
+          headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+          alert('Session expired. Logging out.');
+          localStorage.removeItem('adminToken');
+          window.location.href = '../auth.html';
+          return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          screenshotsList = data.screenshots || [];
+          renderScreenshots(screenshotsList);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" class="empty-row" style="color:var(--danger-color);"><i class="fas fa-exclamation-triangle"></i> Failed: ${data.message}</td></tr>`;
+        }
+      } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-row" style="color:var(--danger-color);"><i class="fas fa-exclamation-triangle"></i> Network error loading screenshots.</td></tr>';
+      }
+    }
+
+    function renderScreenshots(list) {
+      const tbody = document.getElementById('screenshotsTableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-row"><i class="fas fa-image"></i> No payment screenshots found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => {
+        const dateStr = item.uploaded_at ? new Date(item.uploaded_at).toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : 'N/A';
+
+        return `
+          <tr>
+            <td>
+              <div class="thumbnail-wrapper" onclick="previewScreenshot(${item.id})">
+                <i class="fas fa-file-image"></i>
+              </div>
+            </td>
+            <td>
+              <div class="student-info">
+                <span class="student-name">${escapeHtml(item.student_name)}</span>
+                <span class="student-phone">${escapeHtml(item.student_phone)}</span>
+              </div>
+            </td>
+            <td><strong>${escapeHtml(item.doc_name)}</strong></td>
+            <td>${escapeHtml(item.file_name)}</td>
+            <td>${formatBytes(item.file_size)}</td>
+            <td>${dateStr}</td>
+            <td><span class="badge badge-pending">${escapeHtml(item.status)}</span></td>
+            <td>
+              <button class="btn btn-small" onclick="previewScreenshot(${item.id})" style="margin-right: 5px;">
+                <i class="fas fa-eye"></i> View
+              </button>
+              <button class="btn btn-small btn-secondary" onclick="downloadScreenshot(${item.id})" style="margin-right: 5px;">
+                <i class="fas fa-download"></i> Get
+              </button>
+              <button class="btn btn-small btn-danger" onclick="deleteScreenshot(${item.id})">
+                <i class="fas fa-trash-alt"></i> Del
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterScreenshots() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      let filtered = screenshotsList.filter(item => 
+        item.student_name.toLowerCase().includes(q) ||
+        item.student_phone.includes(q) ||
+        item.doc_name.toLowerCase().includes(q)
+      );
+
+      const sort = document.getElementById('sortSelect').value;
+      filtered.sort((a, b) => {
+        if (sort === 'newest') {
+          return new Date(b.uploaded_at || b.id) - new Date(a.uploaded_at || a.id);
+        } else if (sort === 'oldest') {
+          return new Date(a.uploaded_at || a.id) - new Date(b.uploaded_at || b.id);
+        }
+        return 0;
+      });
+
+      renderScreenshots(filtered);
+    }
+
+    async function previewScreenshot(id) {
+      const item = screenshotsList.find(s => s.id === id);
+      if (!item) return;
+
+      const modal = document.getElementById('previewModal');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('modalBody');
+
+      title.textContent = `Screenshot from ${item.student_name} (${item.doc_name})`;
+      body.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>';
+      modal.classList.add('show');
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/admin/documents/${id}/content`, {
+          headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+          }
+        });
+        const data = await response.json();
+        if (data.success && data.document && data.document.doc_data) {
+          body.innerHTML = `<img class="modal-img" src="${data.document.doc_data}" alt="Receipt Screenshot" />`;
+        } else {
+          body.innerHTML = '<div style="color:var(--danger-color)">Could not load preview.</div>';
+        }
+      } catch (error) {
+        body.innerHTML = '<div style="color:var(--danger-color)">Error loading preview content.</div>';
+      }
+    }
+
+    function closePreviewModal(e) {
+      document.getElementById('previewModal').classList.remove('show');
+    }
+
+    async function downloadScreenshot(id) {
+      const item = screenshotsList.find(s => s.id === id);
+      if (!item) return;
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/admin/documents/${id}/content`, {
+          headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+          }
+        });
+        const data = await response.json();
+        if (data.success && data.document && data.document.doc_data) {
+          const link = document.createElement('a');
+          link.href = data.document.doc_data;
+          link.download = data.document.file_name || `screenshot_${id}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          alert('Failed to get download file content.');
+        }
+      } catch (error) {
+        alert('Error downloading screenshot.');
+      }
+    }
+
+    async function deleteScreenshot(id) {
+      if (!confirm('Are you sure you want to delete this screenshot? This cannot be undone.')) return;
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/admin/screenshots/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          alert('✅ Screenshot deleted successfully!');
+          loadScreenshots();
+        } else {
+          alert('❌ Error: ' + data.message);
+        }
+      } catch (error) {
+        alert('Error deleting screenshot.');
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (checkAdminAuth()) {
+        loadScreenshots();
+      }
+    });
+  </script>
+</body>
+</html>
