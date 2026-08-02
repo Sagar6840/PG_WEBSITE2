@@ -176,6 +176,9 @@ def create_new_features_tables():
                 id SERIAL PRIMARY KEY,
                 student_phone VARCHAR(20) NOT NULL UNIQUE,
                 father_name VARCHAR(100) NOT NULL,
+                aadhar_number VARCHAR(20),
+                father_aadhar VARCHAR(20),
+                passport_photo TEXT,
                 admission_date VARCHAR(50) NOT NULL,
                 duration_months INTEGER NOT NULL,
                 monthly_rent INTEGER NOT NULL,
@@ -185,6 +188,11 @@ def create_new_features_tables():
                 signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''');
+        
+        # Ensure new columns exist on already created tables
+        cursor.execute("ALTER TABLE student_contracts ADD COLUMN IF NOT EXISTS aadhar_number VARCHAR(20);")
+        cursor.execute("ALTER TABLE student_contracts ADD COLUMN IF NOT EXISTS father_aadhar VARCHAR(20);")
+        cursor.execute("ALTER TABLE student_contracts ADD COLUMN IF NOT EXISTS passport_photo TEXT;")
         
         # Create student_documents table
         cursor.execute('''
@@ -724,6 +732,9 @@ def save_student_contract(phone):
             
         data = request.get_json(silent=True) or {}
         father_name = data.get('father_name')
+        aadhar_number = data.get('aadhar_number')
+        father_aadhar = data.get('father_aadhar')
+        passport_photo = data.get('passport_photo')
         admission_date = data.get('admission_date')
         duration_months = int(data.get('duration_months', 12))
         monthly_rent = int(data.get('monthly_rent', 8500))
@@ -746,9 +757,9 @@ def save_student_contract(phone):
 
         cursor.execute('''
             INSERT INTO student_contracts 
-            (student_phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-        ''', (phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data))
+            (student_phone, father_name, aadhar_number, father_aadhar, passport_photo, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        ''', (phone, father_name, aadhar_number, father_aadhar, passport_photo, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data))
 
         # Keep the students table in sync so /api/student/<phone> and admin views reflect the latest rent/deposit agreed in the contract
         cursor.execute('''
@@ -798,7 +809,7 @@ def get_student_contract(phone):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at 
+            SELECT father_name, aadhar_number, father_aadhar, passport_photo, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at 
             FROM student_contracts WHERE student_phone = %s
         ''', (phone,))
         
@@ -808,13 +819,16 @@ def get_student_contract(phone):
                 'success': True,
                 'contract': {
                     'father_name': row[0],
-                    'admission_date': row[1],
-                    'duration_months': row[2],
-                    'monthly_rent': row[3],
-                    'security_deposit': row[4],
-                    'home_address': row[5],
-                    'signature_data': row[6],
-                    'signed_at': row[7].strftime('%d-%b-%Y %I:%M %p') if row[7] else 'N/A'
+                    'aadhar_number': row[1],
+                    'father_aadhar': row[2],
+                    'passport_photo': row[3],
+                    'admission_date': row[4],
+                    'duration_months': row[5],
+                    'monthly_rent': row[6],
+                    'security_deposit': row[7],
+                    'home_address': row[8],
+                    'signature_data': row[9],
+                    'signed_at': row[10].strftime('%d-%b-%Y %I:%M %p') if row[10] else 'N/A'
                 }
             }), 200
         else:
@@ -1452,11 +1466,14 @@ def get_admin_contract_detail(phone):
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT
+            SELECT 
                 c.student_phone,
                 s.fullName,
                 s.email,
                 c.father_name,
+                c.aadhar_number,
+                c.father_aadhar,
+                c.passport_photo,
                 c.admission_date,
                 c.duration_months,
                 c.monthly_rent,
@@ -1481,14 +1498,17 @@ def get_admin_contract_detail(phone):
                 'student_name': row[1] or 'N/A',
                 'student_email': row[2] or 'N/A',
                 'father_name': row[3],
-                'admission_date': row[4],
-                'duration_months': row[5],
-                'monthly_rent': row[6],
-                'security_deposit': row[7],
-                'home_address': row[8],
-                'signature_data': row[9],
-                'signed_at': row[10].isoformat() if row[10] else None,
-                'signed_at_display': row[10].strftime('%d-%b-%Y %I:%M %p') if row[10] else 'N/A'
+                'aadhar_number': row[4],
+                'father_aadhar': row[5],
+                'passport_photo': row[6],
+                'admission_date': row[7],
+                'duration_months': row[8],
+                'monthly_rent': row[9],
+                'security_deposit': row[10],
+                'home_address': row[11],
+                'signature_data': row[12],
+                'signed_at': row[13].isoformat() if row[13] else None,
+                'signed_at_display': row[13].strftime('%d-%b-%Y %I:%M %p') if row[13] else 'N/A'
             }
         }), 200
 

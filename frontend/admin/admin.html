@@ -2492,6 +2492,9 @@ function formatAdminCurrency(value) {
 function buildAdminContractTemplate(c) {
     const studentName = escapeHtml(c.student_name || 'N/A');
     const fatherName = escapeHtml(c.father_name || 'N/A');
+    const aadharNumber = escapeHtml(c.aadhar_number || 'N/A');
+    const fatherAadhar = escapeHtml(c.father_aadhar || 'N/A');
+    const passportPhoto = c.passport_photo || null;
     const phone = escapeHtml(c.student_phone || 'N/A');
     const email = escapeHtml(c.student_email || 'N/A');
     const admissionDateText = formatAdminContractDate(c.admission_date, { mode: 'date-only' });
@@ -2510,6 +2513,10 @@ function buildAdminContractTemplate(c) {
     const signatureMarkup = c.signature_data
         ? `<img src="${c.signature_data}" alt="Signature" style="max-width:100%; max-height:100%; object-fit:contain; display:block; margin:0 auto;">`
         : '<div style="color:#64748b; font-size:14px; padding: 18px 0; text-align:center;">No signature found.</div>';
+
+    const photoMarkup = passportPhoto
+        ? `<img src="${passportPhoto}" alt="Passport Photo" style="width:100%; height:100%; object-fit:cover; display:block;">`
+        : `<div style="text-align:center; color:#64748b; font-size:10px; padding:6px;">No Photo</div>`;
 
     return `
         <style>
@@ -2690,16 +2697,23 @@ function buildAdminContractTemplate(c) {
                         </div>
 
                         <div class="admin-contract-section-title">Student Details</div>
-                        <div class="admin-contract-grid">
-                            <div class="admin-contract-label">Full Name:</div><div class="admin-contract-value">${studentName}</div>
-                            <div class="admin-contract-label">Father's Name:</div><div class="admin-contract-value">${fatherName}</div>
-                            <div class="admin-contract-label">Phone:</div><div class="admin-contract-value">${phone}</div>
-                            <div class="admin-contract-label">Email:</div><div class="admin-contract-value">${email}</div>
-                            <div class="admin-contract-label">Admission Date:</div><div class="admin-contract-value">${escapeHtml(admissionDateText)}</div>
-                            <div class="admin-contract-label">Duration:</div><div class="admin-contract-value">${durationText}</div>
-                            <div class="admin-contract-label">Monthly Rent:</div><div class="admin-contract-value">${escapeHtml(rentText)}</div>
-                            <div class="admin-contract-label">Security Deposit:</div><div class="admin-contract-value">${escapeHtml(depositText)}</div>
-                            <div class="admin-contract-label">Home Address:</div><div class="admin-contract-value">${address}</div>
+                        <div style="display:flex; gap:16px; align-items:flex-start;">
+                            <div class="admin-contract-grid" style="flex:1;">
+                                <div class="admin-contract-label">Full Name:</div><div class="admin-contract-value">${studentName}</div>
+                                <div class="admin-contract-label">Aadhaar Number:</div><div class="admin-contract-value">${aadharNumber}</div>
+                                <div class="admin-contract-label">Father's Name:</div><div class="admin-contract-value">${fatherName}</div>
+                                <div class="admin-contract-label">Father's Aadhaar:</div><div class="admin-contract-value">${fatherAadhar}</div>
+                                <div class="admin-contract-label">Phone:</div><div class="admin-contract-value">${phone}</div>
+                                <div class="admin-contract-label">Email:</div><div class="admin-contract-value">${email}</div>
+                                <div class="admin-contract-label">Admission Date:</div><div class="admin-contract-value">${escapeHtml(admissionDateText)}</div>
+                                <div class="admin-contract-label">Duration:</div><div class="admin-contract-value">${durationText}</div>
+                                <div class="admin-contract-label">Monthly Rent:</div><div class="admin-contract-value">${escapeHtml(rentText)}</div>
+                                <div class="admin-contract-label">Security Deposit:</div><div class="admin-contract-value">${escapeHtml(depositText)}</div>
+                                <div class="admin-contract-label">Home Address:</div><div class="admin-contract-value">${address}</div>
+                            </div>
+                            <div style="width:110px; height:138px; border:1px solid #cbd5e1; border-radius:6px; flex-shrink:0; overflow:hidden; background:#f8fafc; display:flex; align-items:center; justify-content:center;">
+                                ${photoMarkup}
+                            </div>
                         </div>
 
                         <div style="font-size:11px; line-height:1.45; color:#374151; margin: 8px 0 10px;">

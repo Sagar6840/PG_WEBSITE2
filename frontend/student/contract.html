@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -233,11 +233,32 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); co
           <input type="text" id="f-name" placeholder="e.g. Rohit Dubey"/>
           <span class="err-msg" id="e-name">Please enter your full name.</span>
         </div>
-
+        <div class="form-group">
+          <label>Student's Aadhaar Card Number *</label>
+          <input type="text" id="f-aadhar" placeholder="12-digit Aadhaar Number" maxlength="14"/>
+          <span class="err-msg" id="e-aadhar">Enter a valid 12-digit Aadhaar Number.</span>
+        </div>
         <div class="form-group">
           <label>Father's Name *</label>
-          <input type="text" id="f-father" placeholder="e.g. Ramesh kumar"/>
-          <span class="err-msg" id="e-father">Required.</span>
+          <input type="text" id="f-father" placeholder="e.g. Ramesh Kumar"/>
+          <span class="err-msg" id="e-father">Please enter father's name.</span>
+        </div>
+        <div class="form-group">
+          <label>Father's Aadhaar Card Number *</label>
+          <input type="text" id="f-father-aadhar" placeholder="12-digit Father's Aadhaar Number" maxlength="14"/>
+          <span class="err-msg" id="e-father-aadhar">Enter a valid 12-digit Father's Aadhaar Number.</span>
+        </div>
+        <div class="form-group full">
+          <label>Student Passport Photo *</label>
+          <input type="file" id="f-photo" accept="image/*" onchange="handlePhotoUpload(event)"/>
+          <div id="photo-preview-container" style="margin-top: 10px; display: none; align-items: center; gap: 14px;">
+            <img id="photo-preview-img" src="" alt="Passport Photo Preview" style="width: 85px; height: 105px; object-fit: cover; border-radius: 6px; border: 2px solid var(--brand); box-shadow: var(--shadow);"/>
+            <div>
+              <p style="font-size: 13px; font-weight: 600; color: var(--brand);">Passport Photo Selected</p>
+              <button type="button" class="btn-ghost" onclick="removeUploadedPhoto()" style="margin-top: 4px; padding: 4px 10px; font-size: 12px; color: #b42318; border-color: #f3c2c2;">Remove Photo</button>
+            </div>
+          </div>
+          <span class="err-msg" id="e-photo">Please upload student's passport photo.</span>
         </div>
 
         <div class="form-group">
@@ -321,16 +342,27 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); co
     <div class="card-body">
 
       <div class="section-title">Student Details</div>
-      <div class="info-grid">
-        <div class="info-label">Full Name</div>       <div class="info-value" id="d-name">-</div>
-        <div class="info-label">Father's Name</div>   <div class="info-value" id="d-father">-</div>
-        <div class="info-label">Phone</div>            <div class="info-value" id="d-phone">-</div>
-        <div class="info-label">Email</div>            <div class="info-value" id="d-email">-</div>
-        <div class="info-label">Admission Date</div>   <div class="info-value" id="d-from">-</div>
-        <div class="info-label">Duration</div>         <div class="info-value" id="d-duration">-</div>
-        <div class="info-label">Monthly Rent</div>     <div class="info-value" id="d-rent">-</div>
-        <div class="info-label">Security Deposit</div> <div class="info-value" id="d-deposit">-</div>
-        <div class="info-label">Home Address</div>     <div class="info-value" id="d-address">-</div>
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <div class="info-grid" style="flex: 1; min-width: 260px; margin-bottom: 0;">
+          <div class="info-label">Full Name</div>       <div class="info-value" id="d-name">-</div>
+          <div class="info-label">Aadhaar Number</div>  <div class="info-value" id="d-aadhar">-</div>
+          <div class="info-label">Father's Name</div>   <div class="info-value" id="d-father">-</div>
+          <div class="info-label">Father's Aadhaar</div><div class="info-value" id="d-father-aadhar">-</div>
+          <div class="info-label">Phone</div>            <div class="info-value" id="d-phone">-</div>
+          <div class="info-label">Email</div>            <div class="info-value" id="d-email">-</div>
+          <div class="info-label">Admission Date</div>   <div class="info-value" id="d-from">-</div>
+          <div class="info-label">Duration</div>         <div class="info-value" id="d-duration">-</div>
+          <div class="info-label">Monthly Rent</div>     <div class="info-value" id="d-rent">-</div>
+          <div class="info-label">Security Deposit</div> <div class="info-value" id="d-deposit">-</div>
+          <div class="info-label">Home Address</div>     <div class="info-value" id="d-address">-</div>
+        </div>
+        <div id="d-photo-box" style="width: 120px; height: 150px; border: 2px dashed var(--border); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafcff; flex-shrink: 0; overflow: hidden; position: relative;">
+          <img id="d-photo-img" src="" alt="Student Passport Photo" style="width: 100%; height: 100%; object-fit: cover; display: none;"/>
+          <div id="d-photo-placeholder" style="text-align: center; color: var(--muted); padding: 8px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px; display: block; opacity: 0.5;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span style="font-size: 11px; font-weight: 600;">PASSPORT PHOTO</span>
+          </div>
+        </div>
       </div>
 
       <div class="highlight-box">
@@ -340,28 +372,16 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); co
 
       <div class="section-title">Terms &amp; Conditions</div>
       <ol class="terms-list">
-        <li>Rent must be paid by the 5th of each month. A late fee of Rs500 per week applies after this date.</li>
+        <li>Rent must be paid on or before the 10th Date of every month.</li>
         <li>The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.</li>
         <li>A minimum of 30 days written notice is required before vacating the premises.</li>
-        <li>Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.</li>
-        <li>The tenant is responsible for keeping their room and shared spaces clean at all times.</li>
-        <li>Any damage to the property must be reported immediately and will be charged to the responsible tenant.</li>
-        <li>Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.</li>
-        <li>Noise must be kept to a minimum after 10:00 PM to respect fellow residents.</li>
-        <li>Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.</li>
-        <li>This agreement is governed by the laws of the State of Madhya Pradesh, India.</li>
+        <li>Visitors are not permitted inside the premises.</li>
+        <li>A minimum stay of 1 year is mandatory.</li>
+        <li>Cooking is not allowed in the rooms/premises.</li>
+        <li>Residents are responsible for the safety and upkeep of their own gadgets and personal belongings.</li>
+        <li>Noise must be kept to a minimum after 09:20 PM to respect fellow residents.</li>
+        <li>Smoking, drinking, and similar activities are strictly prohibited on the premises. Violation of this rule may result in appropriate action, including termination of stay.</li>
       </ol>
-
-      <div class="section-title">Included Services</div>
-      <ol class="terms-list">
-        <li>Wi-Fi internet access (up to 50 Mbps, shared)</li>
-        <li>Daily housekeeping for common areas; weekly for rooms</li>
-        <li>24/7 water supply and power backup (generator during outages)</li>
-        <li>Two meals per day - breakfast &amp; dinner on weekdays</li>
-        <li>Laundry facility access twice a week</li>
-      </ol>
-
-    </div>
   </div>
 
   <!-- Signature box -->
@@ -496,12 +516,46 @@ function showLimitNotice(show) {
 }
 
 let studentData = {};
+let studentPhotoData = null;
 let pad;
 let activeTab = 'draw';
 let contractPdfBlob = null;
 let contractPdfName = 'signed-contract.pdf';
 let contractLocked = false;
 let existingSignatureData = null;
+
+function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Photo file size should be less than 5MB.');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    studentPhotoData = e.target.result;
+    const imgPreview = document.getElementById('photo-preview-img');
+    if (imgPreview) imgPreview.src = studentPhotoData;
+    const container = document.getElementById('photo-preview-container');
+    if (container) container.style.display = 'flex';
+    const err = document.getElementById('e-photo');
+    if (err) err.classList.remove('show');
+    const photoInput = document.getElementById('f-photo');
+    if (photoInput) photoInput.classList.remove('error');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeUploadedPhoto() {
+  studentPhotoData = null;
+  const fileInput = document.getElementById('f-photo');
+  if (fileInput) fileInput.value = '';
+  const container = document.getElementById('photo-preview-container');
+  if (container) container.style.display = 'none';
+  const imgPreview = document.getElementById('photo-preview-img');
+  if (imgPreview) imgPreview.src = '';
+}
 
 function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
@@ -584,7 +638,9 @@ function validate() {
   let ok = true;
   const checks = [
     ['f-name', 'e-name', (v) => v.trim().length > 1],
+    ['f-aadhar', 'e-aadhar', (v) => /^\d{12}$/.test(v.trim().replace(/\s+/g, ''))],
     ['f-father', 'e-father', (v) => v.trim().length > 1],
+    ['f-father-aadhar', 'e-father-aadhar', (v) => /^\d{12}$/.test(v.trim().replace(/\s+/g, ''))],
     ['f-phone', 'e-phone', (v) => /^[6-9]\d{9}$/.test(v.trim())],
     ['f-email', 'e-email', (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())],
     ['f-from', 'e-from', (v) => v !== ''],
@@ -595,6 +651,7 @@ function validate() {
   checks.forEach(([fid, eid, fn]) => {
     const el = document.getElementById(fid);
     const err = document.getElementById(eid);
+    if (!el || !err) return;
     if (!fn(el.value)) {
       el.classList.add('error');
       err.classList.add('show');
@@ -604,6 +661,18 @@ function validate() {
       err.classList.remove('show');
     }
   });
+
+  const photoErr = document.getElementById('e-photo');
+  const photoInput = document.getElementById('f-photo');
+  if (!studentPhotoData) {
+    if (photoInput) photoInput.classList.add('error');
+    if (photoErr) photoErr.classList.add('show');
+    ok = false;
+  } else {
+    if (photoInput) photoInput.classList.remove('error');
+    if (photoErr) photoErr.classList.remove('show');
+  }
+
   return ok;
 }
 
@@ -619,7 +688,10 @@ function collectStudentDataFromForm() {
 
   return {
     name: document.getElementById('f-name').value.trim(),
+    aadhar: (document.getElementById('f-aadhar').value || '').trim().replace(/\s+/g, ''),
     father: document.getElementById('f-father').value.trim(),
+    fatherAadhar: (document.getElementById('f-father-aadhar').value || '').trim().replace(/\s+/g, ''),
+    photo: studentPhotoData,
     phone: document.getElementById('f-phone').value.trim(),
     email: document.getElementById('f-email').value.trim(),
     from: fmt(fromDate),
@@ -634,7 +706,9 @@ function collectStudentDataFromForm() {
 
 function renderContractPreview() {
   document.getElementById('d-name').textContent = studentData.name;
+  document.getElementById('d-aadhar').textContent = studentData.aadhar || '-';
   document.getElementById('d-father').textContent = studentData.father;
+  document.getElementById('d-father-aadhar').textContent = studentData.fatherAadhar || '-';
   document.getElementById('d-phone').textContent = studentData.phone;
   document.getElementById('d-email').textContent = studentData.email;
   document.getElementById('d-from').textContent = studentData.from;
@@ -643,6 +717,18 @@ function renderContractPreview() {
   document.getElementById('d-deposit').textContent = '₹' + studentData.deposit.toLocaleString('en-IN') + ' (2 months)';
   document.getElementById('d-address').textContent = studentData.address;
   document.getElementById('agree-name').textContent = studentData.name;
+
+  const photoImg = document.getElementById('d-photo-img');
+  const photoPlaceholder = document.getElementById('d-photo-placeholder');
+  if (studentData.photo) {
+    photoImg.src = studentData.photo;
+    photoImg.style.display = 'block';
+    if (photoPlaceholder) photoPlaceholder.style.display = 'none';
+  } else {
+    photoImg.style.display = 'none';
+    if (photoPlaceholder) photoPlaceholder.style.display = 'block';
+  }
+
   contractPdfName = buildContractFileName(studentData.name);
 }
 
@@ -908,7 +994,9 @@ function buildContractPdfBlob(signatureOverride) {
 
   const rows = [
     ['Full Name', studentData.name],
+    ['Aadhaar Number', studentData.aadhar || '-'],
     ["Father's Name", studentData.father],
+    ["Father's Aadhaar", studentData.fatherAadhar || '-'],
     ['Phone', studentData.phone],
     ['Email', studentData.email],
     ['Admission Date', studentData.from],
@@ -918,9 +1006,33 @@ function buildContractPdfBlob(signatureOverride) {
     ['Home Address', studentData.address]
   ];
 
+  // Draw Passport Photo on the right side of the Student Details section
+  const photoWidth = 26;
+  const photoHeight = 32;
+  const photoX = pageWidth - margin - photoWidth;
+  const photoY = y;
+
+  doc.setDrawColor(209, 221, 232);
+  doc.rect(photoX, photoY, photoWidth, photoHeight);
+  if (studentData.photo) {
+    try {
+      doc.addImage(studentData.photo, photoX + 0.5, photoY + 0.5, photoWidth - 1, photoHeight - 1, undefined, 'FAST');
+    } catch(err) {
+      console.warn('Unable to add photo image to PDF:', err);
+    }
+  } else {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text('Passport Photo', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
+    doc.setTextColor(26, 37, 51);
+  }
+
+  const textWrapWidth = contentWidth - photoWidth - 6;
+
   doc.setFontSize(10);
   rows.forEach(([label, value]) => {
-    const wrappedValue = doc.splitTextToSize(String(value), contentWidth - 42);
+    const wrappedValue = doc.splitTextToSize(String(value), textWrapWidth - 42);
     ensureSpace(Math.max(8, wrappedValue.length * 5) + 2);
     doc.setFont('helvetica', 'bold');
     doc.text(`${label}:`, margin, y);
@@ -928,6 +1040,10 @@ function buildContractPdfBlob(signatureOverride) {
     doc.text(wrappedValue, margin + 42, y);
     y += Math.max(8, wrappedValue.length * 5);
   });
+
+  if (y < photoY + photoHeight + 4) {
+    y = photoY + photoHeight + 4;
+  }
 
   y += 2;
   ensureSpace(18);
@@ -937,15 +1053,15 @@ function buildContractPdfBlob(signatureOverride) {
   y += 5;
 
   const terms = [
-    'Rent must be paid by the Mentioned Date of each month. ',
+    'Rent must be paid on or before the 10th Date of every month.',
     'The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.',
     'A minimum of 30 days written notice is required before vacating the premises.',
-    'Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.',
-    'The PG is responsible for keeping their room and shared spaces clean at 2-3 times per week.',
-    'Any damage to the property must be reported immediately and will be charged to the responsible tenant.',
-    'Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.',
-    'Noise must be kept to a minimum after 10:00 PM to respect fellow residents.',
-    'Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.'
+    'Visitors are not permitted inside the premises.',
+    'A minimum stay of 1 year is mandatory',
+    'Cooking is not allowed in the rooms/premises.',
+    'Residents are responsible for the safety and upkeep of their own gadgets and personal belongings',
+    'Noise must be kept to a minimum after 09:20 PM to respect fellow residents.',
+    'Smoking, drinking, and similar activities are strictly prohibited on the premises. Violation of this rule may result in appropriate action, including termination of stay.'
   ];
 
   doc.setFont('helvetica', 'normal');
@@ -1039,6 +1155,9 @@ async function submitContract() {
 
   const payload = {
     father_name: studentData.father,
+    aadhar_number: studentData.aadhar,
+    father_aadhar: studentData.fatherAadhar,
+    passport_photo: studentData.photo,
     admission_date: studentData.fromRaw,
     duration_months: studentData.months,
     monthly_rent: studentData.rent,
@@ -1117,6 +1236,15 @@ function viewContract() {
 function fillFormFromContract(contract, phone) {
   document.getElementById('f-phone').value = phone || '';
   document.getElementById('f-father').value = contract.father_name || '';
+  document.getElementById('f-aadhar').value = contract.aadhar_number || '';
+  document.getElementById('f-father-aadhar').value = contract.father_aadhar || '';
+  if (contract.passport_photo) {
+    studentPhotoData = contract.passport_photo;
+    const imgPreview = document.getElementById('photo-preview-img');
+    if (imgPreview) imgPreview.src = studentPhotoData;
+    const container = document.getElementById('photo-preview-container');
+    if (container) container.style.display = 'flex';
+  }
   document.getElementById('f-from').value = /^\d{4}-\d{2}-\d{2}$/.test(contract.admission_date || '') ? contract.admission_date : '';
   document.getElementById('f-duration').value = String(contract.duration_months || 12);
   document.getElementById('f-rent').value = contract.monthly_rent || 8500;
