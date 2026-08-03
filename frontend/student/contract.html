@@ -304,9 +304,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); co
         </div>
 
         <div class="form-group">
-          <label>Security Deposit (Rs)</label>
-          <input type="number" id="f-deposit" placeholder="Auto-calculated" readonly style="background:#f0f4f8; color:var(--muted);"/>
-          <span class="form-hint">Auto = 2 months rent</span>
+          <label>Security Deposit (Rs) *</label>
+          <input type="number" id="f-deposit" placeholder="e.g. 17000" value="17000"/>
+          <span class="err-msg" id="e-deposit">Enter a valid deposit amount.</span>
         </div>
 
         <div class="form-group full">
@@ -619,19 +619,12 @@ function setContractLockedState(isLocked, message) {
   document.querySelector('#screen-sign .btn-back').disabled = isLocked;
 }
 
-function updateDepositField() {
-  const r = parseInt(document.getElementById('f-rent').value, 10) || 0;
-  document.getElementById('f-deposit').value = r ? '₹' + (r * 2).toLocaleString('en-IN') : '';
-}
-
 function initializeDefaults() {
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('f-from').min = today;
   document.getElementById('f-from').value = today;
   document.getElementById('gen-date').textContent = new Date().toLocaleDateString('en-IN', {
     day: '2-digit', month: 'long', year: 'numeric'
   });
-  updateDepositField();
 }
 
 function validate() {
@@ -645,6 +638,7 @@ function validate() {
     ['f-email', 'e-email', (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())],
     ['f-from', 'e-from', (v) => v !== ''],
     ['f-rent', 'e-rent', (v) => parseInt(v, 10) > 0],
+    ['f-deposit', 'e-deposit', (v) => !isNaN(parseInt(v, 10)) && parseInt(v, 10) >= 0],
     ['f-address', 'e-address', (v) => v.trim().length > 5]
   ];
 
@@ -684,7 +678,7 @@ function collectStudentDataFromForm() {
   toDate.setMonth(toDate.getMonth() + months);
   const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   const rent = parseInt(document.getElementById('f-rent').value, 10);
-  const deposit = rent * 2;
+  const deposit = parseInt(document.getElementById('f-deposit').value, 10) || 0;
 
   return {
     name: document.getElementById('f-name').value.trim(),
@@ -714,7 +708,7 @@ function renderContractPreview() {
   document.getElementById('d-from').textContent = studentData.from;
   document.getElementById('d-duration').textContent = `${studentData.months} months (till ${studentData.to})`;
   document.getElementById('d-rent').textContent = '₹' + studentData.rent.toLocaleString('en-IN') + ' / month';
-  document.getElementById('d-deposit').textContent = '₹' + studentData.deposit.toLocaleString('en-IN') + ' (2 months)';
+  document.getElementById('d-deposit').textContent = '₹' + studentData.deposit.toLocaleString('en-IN');
   document.getElementById('d-address').textContent = studentData.address;
   document.getElementById('agree-name').textContent = studentData.name;
 
@@ -1248,7 +1242,7 @@ function fillFormFromContract(contract, phone) {
   document.getElementById('f-from').value = /^\d{4}-\d{2}-\d{2}$/.test(contract.admission_date || '') ? contract.admission_date : '';
   document.getElementById('f-duration').value = String(contract.duration_months || 12);
   document.getElementById('f-rent').value = contract.monthly_rent || 8500;
-  document.getElementById('f-deposit').value = contract.security_deposit ? ('₹' + Number(contract.security_deposit).toLocaleString('en-IN')) : '';
+  document.getElementById('f-deposit').value = contract.security_deposit != null ? contract.security_deposit : 17000;
   document.getElementById('f-address').value = contract.home_address || '';
 }
 
@@ -1359,7 +1353,6 @@ async function deleteExistingContract() {
 
 async function initializePage() {
   initializeDefaults();
-  document.getElementById('f-rent').addEventListener('input', updateDepositField);
 
   const storedPhone = getStoredStudentPhone();
   if (/^\d{10}$/.test(storedPhone)) {

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR PG - Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <style>
         :root {
             /* Modern Color Palette */
@@ -2674,6 +2675,7 @@ function buildAdminContractTemplate(c) {
         </style>
         <div class="admin-contract-shell" role="dialog" aria-modal="true" aria-labelledby="admin-contract-title">
             <div class="admin-contract-toolbar">
+                <button type="button" class="btn btn-primary" onclick="downloadAdminContractPdf('${escapeHtml(c.student_phone || '')}')" style="margin-right: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; background: #6366f1; color: white; border: none; border-radius: 8px; font-weight: 600;">Download PDF</button>
                 <button type="button" class="admin-contract-close" onclick="closeAdminContractModal()">Close</button>
             </div>
             <div class="admin-contract-scroll">
@@ -2722,24 +2724,15 @@ function buildAdminContractTemplate(c) {
 
                         <div class="admin-contract-section-title">Terms &amp; Conditions</div>
                         <ol class="admin-contract-terms">
-                            <li>Rent must be paid by the Mentioned Date of each month.</li>
+                            <li>Rent must be paid on or before the 10th Date of every month.</li>
                             <li>The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.</li>
                             <li>A minimum of 30 days written notice is required before vacating the premises.</li>
-                            <li>Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.</li>
-                            <li>The PG is responsible for keeping their room and shared spaces clean at 2-3 times per week.</li>
-                            <li>Any damage to the property must be reported immediately and will be charged to the responsible tenant.</li>
-                            <li>Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.</li>
-                            <li>Noise must be kept to a minimum after 10:00 PM to respect fellow residents.</li>
-                            <li>Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.</li>
-                        </ol>
-
-                        <div class="admin-contract-section-title">Included Services</div>
-                        <ol class="admin-contract-terms">
-                            <li>Wi-Fi internet access (up to 50 Mbps, shared)</li>
-                            <li>Daily housekeeping for common areas; weekly for rooms</li>
-                            <li>24/7 water supply and power backup (generator during outages)</li>
-                            <li>Two meals per day - breakfast &amp; dinner on weekdays</li>
-                            <li>Laundry facility access twice a week</li>
+                            <li>Visitors are not permitted inside the premises.</li>
+                            <li>A minimum stay of 1 year is mandatory</li>
+                            <li>Cooking is not allowed in the rooms/premises.</li>
+                            <li>Residents are responsible for the safety and upkeep of their own gadgets and personal belongings</li>
+                            <li>Noise must be kept to a minimum after 09:20 PM to respect fellow residents.</li>
+                            <li>Smoking, drinking, and similar activities are strictly prohibited on the premises. Violation of this rule may result in appropriate action, including termination of stay.</li>
                         </ol>
 
                         <div class="admin-contract-signature-title">Signature</div>
@@ -2753,6 +2746,229 @@ function buildAdminContractTemplate(c) {
             </div>
         </div>
     `;
+}
+
+async function downloadAdminContractPdf(phone) {
+    if (!phone) {
+        alert('Invalid student phone number.');
+        return;
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF library is loading or failed to load. Please refresh.');
+        return;
+    }
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/contracts/' + phone, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.contract) {
+            throw new Error(data.message || 'Unable to load contract details.');
+        }
+
+        const c = data.contract;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 14;
+        const contentWidth = pageWidth - margin * 2;
+        const lineHeight = 6;
+        let y = margin;
+
+        const addWrappedText = (text, x, currentY, options = {}) => {
+            const fontSize = options.fontSize || 10;
+            const maxWidth = options.maxWidth || contentWidth;
+            doc.setFont('helvetica', options.bold ? 'bold' : 'normal');
+            doc.setFontSize(fontSize);
+            const lines = doc.splitTextToSize(text, maxWidth);
+            doc.text(lines, x, currentY);
+            return currentY + lines.length * (options.lineHeight || lineHeight);
+        };
+
+        const ensureSpace = (requiredHeight) => {
+            if (y + requiredHeight > pageHeight - margin) {
+                doc.addPage();
+                y = margin;
+            }
+        };
+
+        doc.setFillColor(26, 60, 94);
+        doc.rect(0, 0, pageWidth, 28, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('AR PG Accommodations', margin, 12);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Signed Accommodation Agreement', margin, 20);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text('PG Owner: Ravi Shankar Gowda', pageWidth - margin, 10, { align: 'right' });
+        doc.text('Email: ravishankargowda88@gmail.com', pageWidth - margin, 15, { align: 'right' });
+        doc.text('Mob: +91-9738225350', pageWidth - margin, 20, { align: 'right' });
+
+        doc.setTextColor(26, 37, 51);
+        y = 38;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text('PG Accommodation Agreement', margin, y);
+        y += 8;
+
+        const generatedDate = c.signed_at ? formatAdminContractDate(c.signed_at, { mode: 'date-only' }) : 'N/A';
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        y = addWrappedText('Contract ID: AR-2025-00142', margin, y, { fontSize: 10, bold: true });
+        y = addWrappedText(`Generated: ${generatedDate}`, margin, y);
+        y += 2;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('Student Details', margin, y);
+        y += 5;
+
+        const admissionDateText = formatAdminContractDate(c.admission_date, { mode: 'date-only' });
+        const admissionDate = c.admission_date ? new Date(c.admission_date) : null;
+        const endDate = addMonthsToDate(c.admission_date, c.duration_months);
+        const durationText = endDate && admissionDate && !Number.isNaN(admissionDate.getTime())
+            ? `${c.duration_months || 0} months (till ${endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })})`
+            : `${c.duration_months || 'N/A'} months`;
+
+        const rows = [
+            ['Full Name', c.student_name || 'N/A'],
+            ['Aadhaar Number', c.aadhar_number || '-'],
+            ["Father's Name", c.father_name || 'N/A'],
+            ["Father's Aadhaar", c.father_aadhar || '-'],
+            ['Phone', c.student_phone || 'N/A'],
+            ['Email', c.student_email || 'N/A'],
+            ['Admission Date', admissionDateText],
+            ['Duration', durationText],
+            ['Monthly Rent', `${formatAdminCurrency(c.monthly_rent)} / month`],
+            ['Security Deposit', `${formatAdminCurrency(c.security_deposit)}`],
+            ['Home Address', c.home_address || 'N/A']
+        ];
+
+        const photoWidth = 26;
+        const photoHeight = 32;
+        const photoX = pageWidth - margin - photoWidth;
+        const photoY = y;
+
+        doc.setDrawColor(209, 221, 232);
+        doc.rect(photoX, photoY, photoWidth, photoHeight);
+        if (c.passport_photo) {
+            try {
+                doc.addImage(c.passport_photo, photoX + 0.5, photoY + 0.5, photoWidth - 1, photoHeight - 1, undefined, 'FAST');
+            } catch(err) {
+                console.warn('Unable to add photo image to PDF:', err);
+            }
+        } else {
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(150, 150, 150);
+            doc.text('Passport Photo', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
+            doc.setTextColor(26, 37, 51);
+        }
+
+        const textWrapWidth = contentWidth - photoWidth - 6;
+
+        doc.setFontSize(10);
+        rows.forEach(([label, value]) => {
+            const wrappedValue = doc.splitTextToSize(String(value), textWrapWidth - 42);
+            ensureSpace(Math.max(8, wrappedValue.length * 5) + 2);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${label}:`, margin, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(wrappedValue, margin + 42, y);
+            y += Math.max(8, wrappedValue.length * 5);
+        });
+
+        if (y < photoY + photoHeight + 4) {
+            y = photoY + photoHeight + 4;
+        }
+
+        y += 2;
+        ensureSpace(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('Terms & Conditions', margin, y);
+        y += 5;
+
+        const terms = [
+            'Rent must be paid on or before the 10th Date of every month.',
+            'The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.',
+            'A minimum of 30 days written notice is required before vacating the premises.',
+            'Visitors are not permitted inside the premises.',
+            'A minimum stay of 1 year is mandatory',
+            'Cooking is not allowed in the rooms/premises.',
+            'Residents are responsible for the safety and upkeep of their own gadgets and personal belongings',
+            'Noise must be kept to a minimum after 09:20 PM to respect fellow residents.',
+            'Smoking, drinking, and similar activities are strictly prohibited on the premises. Violation of this rule may result in appropriate action, including termination of stay.'
+        ];
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setCharSpace(0);
+        terms.forEach((term, index) => {
+            const numberWidth = 8;
+            const bodyWidth = contentWidth - numberWidth;
+            const termLines = doc.splitTextToSize(term, bodyWidth);
+            ensureSpace(termLines.length * 5 + 2);
+            doc.text(`${index + 1}.`, margin, y);
+            termLines.forEach((line, lineIndex) => {
+                doc.text(line, margin + numberWidth, y + (lineIndex * 5));
+            });
+            y += termLines.length * 5 + 2;
+        });
+
+        y += 2;
+        ensureSpace(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('Signature', margin, y);
+        y += 6;
+
+        if (c.signature_data) {
+            ensureSpace(42);
+            doc.setDrawColor(209, 221, 232);
+            doc.rect(margin, y, contentWidth, 30);
+            try {
+                doc.addImage(c.signature_data, 'PNG', margin + 3, y + 3, contentWidth - 6, 24, undefined, 'FAST');
+            } catch(e) {
+                doc.text('Signature image error.', margin, y);
+            }
+            y += 34;
+        } else {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text('No signature captured.', margin, y);
+            y += 8;
+        }
+
+        const signedAtStr = c.signed_at ? formatAdminContractDate(c.signed_at) : 'N/A';
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(90, 106, 122);
+        doc.text(`Signed at: ${signedAtStr}`, margin, pageHeight - 14);
+        doc.text('Generated electronically by AR PG Accommodations', pageWidth - margin, pageHeight - 14, { align: 'right' });
+
+        const pdfBlob = doc.output('blob');
+        const fileName = `AR-PG-Signed-Contract-${(c.student_name || 'student').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch(err) {
+        console.error('Error generating admin contract PDF:', err);
+        alert('Error generating contract PDF: ' + (err.message || 'Unknown error'));
+    }
 }
 
 async function loadAdminDocuments() {
